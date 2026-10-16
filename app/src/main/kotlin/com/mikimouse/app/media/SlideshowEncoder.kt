@@ -12,6 +12,64 @@ import kotlin.math.roundToInt
 object SlideshowEncoder {
     data class Result(val file: File, val frames: Int, val durationUs: Long)
 
+    private class Session(val codec: MediaCodec, val muxer: MediaMuxer) {
+        var track = -1
+        var started = false
+        val info = MediaCodec.BufferInfo()
+
+        fun drain(endOfStream: Boolean) {
+            while (true) {
+                val idx = codec.dequeueOutputBuffer(info, 10_000)
+                when {
+                    idx == MediaCodec.INFO_TRY_AGAIN_LATER -> return
+                    idx == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
+                        if (started) throw IllegalStateException("encoder: format changed twice")
+                        track = muxer.addTrack(codec.outputFormat)
+                        muxer.start()
+                        started = true
+                    }
+                    idx >= 0 -> {
+                        val buf = codec.getOutputBuffer(idx)
+                            ?: throw IllegalStateException("encoder: null output buffer")
+                        if (started && info.size > 0 &&
+                            info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG == 0
+                        ) {
+                            buf.position(info.offset)
+                            buf.limit(info.offset + info.size)
+                            muxer.writeSampleData(track, buf, info)
+                        }
+                        codec.releaseOutputBuffer(idx, false)
+                        if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) return
+                        if (!endOfStream) return
+                    }
+                }
+            }
+        }
+
+        fun feed(yuv: ByteArray, ptsUs: Long) {
+            var fed = false
+            var tries = 0
+            while (!fed && tries < 30) {
+                val idx = codec.dequeueInputBuffer(10_000)
+                if (idx >= 0) {
+                    val buf = codec.getInputBuffer(idx)
+                        ?: throw IllegalStateException("encoder: null input buffer")
+                    buf.clear()
+                    if (buf.remaining() < yuv.size) {
+                        codec.queueInputBuffer(idx, 0, 0, 0, 0)
+                        throw IllegalStateException("encoder: frame larger than input buffer")
+                    }
+                    buf.put(yuv)
+                    codec.queueInputBuffer(idx, 0, yuv.size, ptsUs, 0)
+                    fed = true
+                }
+                tries++
+            }
+            if (!fed) throw IllegalStateException("encoder: no input buffer after 30 tries")
+            drain(endOfStream = false)
+        }
+    }
+
     fun encode(
         images: List<File>,
         out: File,
@@ -26,7 +84,6 @@ object SlideshowEncoder {
 
         val totalFrames = (totalSeconds * fps).coerceIn(fps * 5, fps * 180)
         val framesPerImage = (totalFrames / images.size).coerceAtLeast(fps)
-        val actualFrames = framesPerImage * images.size
 
         val format = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, width, height).apply {
             setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible)
@@ -34,112 +91,42 @@ object SlideshowEncoder {
             setInteger(MediaFormat.KEY_FRAME_RATE, fps)
             setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1)
         }
-        val codec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
+        val codec = try {
+            MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
+        } catch (t: Throwable) {
+            throw IllegalStateException("no AVC hardware encoder on this device", t)
+        }
         var muxer: MediaMuxer? = null
-        var track = -1
-        var muxerStarted = false
-        val bufferInfo = android.media.MediaCodec.BufferInfo()
         try {
             codec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
             codec.start()
             muxer = MediaMuxer(out.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+            val s = Session(codec, muxer)
             var frameIndex = 0
+            var usedImages = 0
             images.forEach { img ->
                 val bmp = decodeCover(img, width, height) ?: return@forEach
                 val yuv = bitmapToNv12(bmp, width, height)
                 bmp.recycle()
+                usedImages++
                 repeat(framesPerImage) {
-                    val ptsUs = (frameIndex * 1_000_000L) / fps
-                    feedFrame(codec, yuv, ptsUs, bufferInfo, muxer, track, { muxerStarted }, { started, t ->
-                        muxerStarted = started; track = t
-                    })
+                    s.feed(yuv, (frameIndex * 1_000_000L) / fps)
                     frameIndex++
                 }
             }
-            // Drain with EOS.
+            if (usedImages == 0) throw IllegalStateException("none of the images could be decoded")
             codec.signalEndOfInputStream()
-            drain(codec, bufferInfo, muxer, track, muxerStarted, endOfStream = true)
+            s.drain(endOfStream = true)
+            if (!s.started) throw IllegalStateException("encoder produced no output")
             muxer.stop()
-            return Result(out, actualFrames, (actualFrames * 1_000_000L) / fps)
+            return Result(out, frameIndex, (frameIndex * 1_000_000L) / fps)
+        } catch (t: Throwable) {
+            out.delete()
+            throw IllegalStateException("video render failed: ${t.message}", t)
         } finally {
             try { codec.stop() } catch (_: Exception) {}
             codec.release()
             try { muxer?.release() } catch (_: Exception) {}
-        }
-    }
-
-    private fun drain(
-        codec: MediaCodec,
-        info: android.media.MediaCodec.BufferInfo,
-        muxer: MediaMuxer?,
-        track: Int,
-        started: Boolean,
-        endOfStream: Boolean,
-    ) {
-        var t = track
-        var s = started
-        while (true) {
-            val idx = codec.dequeueOutputBuffer(info, 10_000)
-            when {
-                idx == MediaCodec.INFO_TRY_AGAIN_LATER -> if (endOfStream) return
-                idx == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
-                    if (s) throw IllegalStateException("format changed twice")
-                    t = muxer!!.addTrack(codec.outputFormat)
-                    muxer.start()
-                    s = true
-                }
-                idx >= 0 -> {
-                    val buf = codec.getOutputBuffer(idx)!!
-                    if (info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG == 0 && info.size > 0 && s) {
-                        buf.position(info.offset)
-                        buf.limit(info.offset + info.size)
-                        muxer!!.writeSampleData(t, buf, info)
-                    }
-                    codec.releaseOutputBuffer(idx, false)
-                    if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) return
-                    if (!endOfStream) return
-                }
-            }
-        }
-    }
-
-    private fun feedFrame(
-        codec: MediaCodec,
-        yuv: ByteArray,
-        ptsUs: Long,
-        info: android.media.MediaCodec.BufferInfo,
-        muxer: MediaMuxer?,
-        track: Int,
-        isStarted: () -> Boolean,
-        onTrack: (Boolean, Int) -> Unit,
-    ) {
-        val idx = codec.dequeueInputBuffer(10_000)
-        if (idx >= 0) {
-            val buf = codec.getInputBuffer(idx)!!
-            buf.clear()
-            buf.put(yuv)
-            codec.queueInputBuffer(idx, 0, yuv.size, ptsUs, 0)
-        }
-        // Drain available output without blocking for EOS.
-        while (true) {
-            val o = codec.dequeueOutputBuffer(info, 0)
-            if (o == MediaCodec.INFO_TRY_AGAIN_LATER) return
-            if (o == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                val t = muxer!!.addTrack(codec.outputFormat)
-                muxer.start()
-                onTrack(true, t)
-                continue
-            }
-            if (o >= 0) {
-                val buf = codec.getOutputBuffer(o)!!
-                if (info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG == 0 && info.size > 0 && isStarted()) {
-                    buf.position(info.offset)
-                    buf.limit(info.offset + info.size)
-                    muxer!!.writeSampleData(track, buf, info)
-                }
-                codec.releaseOutputBuffer(o, false)
-                if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) return
-            }
         }
     }
 
@@ -151,7 +138,6 @@ object SlideshowEncoder {
         while (bounds.outWidth / (sample * 2) >= w && bounds.outHeight / (sample * 2) >= h) sample *= 2
         val opts = BitmapFactory.Options().apply { inSampleSize = sample }
         val raw = BitmapFactory.decodeFile(file.absolutePath, opts) ?: return null
-        // Center-crop to exact aspect then scale.
         val targetAspect = w.toFloat() / h
         val srcAspect = raw.width.toFloat() / raw.height
         val (cw, ch) = if (srcAspect > targetAspect) {
@@ -189,10 +175,8 @@ object SlideshowEncoder {
                 val r = (p shr 16) and 0xFF
                 val g = (p shr 8) and 0xFF
                 val b = p and 0xFF
-                val u = ((-0.169 * r - 0.331 * g + 0.5 * b + 128).roundToInt().coerceIn(0, 255)).toByte()
-                val v = ((0.5 * r - 0.419 * g - 0.081 * b + 128).roundToInt().coerceIn(0, 255)).toByte()
-                yuv[uv++] = u
-                yuv[uv++] = v
+                yuv[uv++] = ((-0.169 * r - 0.331 * g + 0.5 * b + 128).roundToInt().coerceIn(0, 255)).toByte()
+                yuv[uv++] = ((0.5 * r - 0.419 * g - 0.081 * b + 128).roundToInt().coerceIn(0, 255)).toByte()
             }
         }
         return yuv

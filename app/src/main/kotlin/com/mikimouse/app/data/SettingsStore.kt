@@ -46,6 +46,21 @@ class SettingsStore(private val ctx: Context) {
 
     fun budget() = ResourceBudget(ramTargetMB, storageQuotaMB, cpu, network)
 
+    fun keyAliasFor(id: String = providerId): String = when (id) {
+        "openai" -> "OPENAI_API_KEY"
+        "openrouter" -> "OPENROUTER_API_KEY"
+        else -> "CUSTOM_API_KEY"
+    }
+
+    fun modelStatus(keystore: SecureKeyStore): String = when (providerId) {
+        "local" -> "local stub (offline)"
+        else -> {
+            val has = KeystoreKeysFile.loadFrom(keysDir, keyAliasFor(), keystore) != null
+            "$providerId · ${model.ifBlank { "default model" }} · " +
+                if (has) "key ✓" else "no key — local stub until saved"
+        }
+    }
+
     fun router(keystore: SecureKeyStore): ModelRouter {
         val keys = KeystoreKeys(keystore, keysDir)
         val primary: ModelProvider = when (providerId) {

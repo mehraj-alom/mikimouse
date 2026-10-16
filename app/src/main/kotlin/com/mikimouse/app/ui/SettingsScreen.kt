@@ -14,12 +14,19 @@ import com.mikimouse.operator.ConnectorRegistry
 import com.mikimouse.operator.CpuPolicy
 import com.mikimouse.operator.MemoryStore
 import com.mikimouse.operator.NetworkPolicy
+import com.mikimouse.operator.SkillKind
+import com.mikimouse.operator.SkillManager
+import com.mikimouse.operator.SkillRecord
 import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsScreen(operatorRoot: File) {
     val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
     val store = remember { SettingsStore(ctx) }
+    val skills = remember { SkillManager(operatorRoot) }
     val ks = remember { SecureKeyStore() }
     val keysDir = remember { File(ctx.filesDir, "keys") }
     val memFile = remember { File(operatorRoot, "memory/prefs.json") }
@@ -35,6 +42,28 @@ fun SettingsScreen(operatorRoot: File) {
     var apiKey by remember { mutableStateOf("") }
     var memEnabled by remember { mutableStateOf(store.memoryEnabled) }
     var memView by remember { mutableStateOf<Map<String, String>?>(null) }
+    var skillList by remember { mutableStateOf<List<SkillRecord>>(emptyList()) }
+    var busySkill by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) { skillList = skills.list() }
+
+    fun installSkill(id: String) {
+        if (store.network == NetworkPolicy.OFFLINE_ONLY) {
+            msg = "Offline mode: skill install needs network"
+            return
+        }
+        busySkill = id
+        scope.launch(Dispatchers.IO) {
+            try {
+                skills.ensure(id)
+                skillList = skills.list()
+                msg = "Skill $id installed (temp) ✓"
+            } catch (t: Throwable) {
+                msg = "Skill $id failed: ${t.message?.take(140)}"
+            } finally {
+                busySkill = null
+            }
+        }
+    }
 
     fun keyAlias() = when (provider) {
         "openai" -> "OPENAI_API_KEY"
@@ -126,6 +155,50 @@ fun SettingsScreen(operatorRoot: File) {
                         }) { Text("Delete") }
                     }
                     memView?.forEach { (k, v) -> Text("$k: ${v.take(80)}", style = MaterialTheme.typography.bodySmall) }
+                }
+            }
+        }
+        item {
+            GlassCard(Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Skills (auto-installed as temp when needed)", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "Tasks install missing skills automatically (temp) and keep this list for later reference.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(enabled = busySkill == null, onClick = { installSkill("composio") }) {
+                            Text(if (busySkill == "composio") "…" else "Get composio")
+                        }
+                        Button(enabled = busySkill == null, onClick = { installSkill("pr-watch") }) {
+                            Text(if (busySkill == "pr-watch") "…" else "Get pr-watch")
+                        }
+                    }
+                    if (skillList.isEmpty()) Text("No skills installed yet", style = MaterialTheme.typography.bodySmall)
+                    skillList.forEach { s ->
+                        Row {
+                            Text(
+                                "${if (s.kind == SkillKind.PERMANENT) "●" else "○"} ${s.id} [${s.kind}] · ${s.files.size} files",
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.weight(1f),
+                            )
+                            if (s.kind == SkillKind.TEMP) {
+                                TextButton(onClick = {
+                                    scope.launch(Dispatchers.IO) {
+                                        skills.promote(s.id)
+                                        skillList = skills.list()
+                                    }
+                                }) { Text("Keep") }
+                            }
+                            TextButton(onClick = {
+                                scope.launch(Dispatchers.IO) {
+                                    skills.remove(s.id)
+                                    skillList = skills.list()
+                                }
+                            }) { Text("Remove") }
+                        }
+                        Text(s.source, style = MaterialTheme.typography.bodySmall)
+                    }
                 }
             }
         }
