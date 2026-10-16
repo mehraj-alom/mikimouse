@@ -44,7 +44,7 @@ C11 Extract frames as images (thumbnails/contact sheet)
 C12 Rotate/flip + format convert (mp4/mkv→mp4, png↔jpg, gif first-frame)
 C13 Loudness normalize note + passthrough (no fake DSP)
 C14 Subtitle burn-in from SRT (draw text frames, honest sampling note) [DONE]
-C15 Watermark/copyright text overlay option
+C15 Watermark/copyright text overlay option [DONE]
 C16 Batch queue: N media jobs sequentially under quota [DONE]
 C17 Render progress % via codec frame callbacks
 C18 Cancel render mid-flight, keep partial + resume
@@ -57,10 +57,10 @@ D02 Markdown + CSV + text report writers [DONE]
 D03 Android PDF fallback (PdfDocument, no java.awt) [DONE]
 D04 OCR text feeds outlines (not filenames) [DONE]
 D05 [NOW] PPTX template picker (3 built-in design systems: ink/minimal, ocean, sunset)
-D06 Slide images embedded from inputs (draw into PDF; PPTX where awt allows)
+D06 Slide images embedded from inputs (draw into PDF; PPTX where awt allows) [DONE]
 D07 DOCX writer (POI XWPF — JVM; Android fallback note) [DONE]
 D08 Spreadsheet writer (CSV real; XLSX via POI JVM-only note) [DONE]
-D09 PDF merge/split via PdfDocument
+D09 PDF merge/split via PdfDocument [DONE]
 D10 Document→PDF preview for every artifact
 D11 Export via MediaStore Downloads (visible outside app)
 D12 Benchmarks B2/B3/B6 on-device checklist [NEXT]
@@ -73,7 +73,7 @@ E04 Model summary of research (remote when configured) [DONE]
 E05 [DONE] Keyless web search (DuckDuckGo Instant Answer, no key, capped, cited)
 E06 Query rewriting (instruction → 3 search queries via model/local rules)
 E07 Multi-source merge (3-5 pages, dedupe, cite each claim)
-E08 Answer caching per query (24h, workspace cache)
+E08 Answer caching per query (24h, workspace cache) [DONE]
 E09 Offline research pack (saved sources reused, labeled stale)
 E10 B4/B9/B10 on-device checklist [NEXT]
 
@@ -82,7 +82,7 @@ F01 Chat thread UI with progressive reveal [DONE]
 F02 Follow-up suggestions, tap-to-ask [DONE]
 F03 Next-action chips (Export latest, Present this) [DONE]
 F04 Persisted history (session.json, 100 msgs) + Clear [DONE]
-F05 [NOW] Per-task conversation files (chats/<taskId>.json with Q/A/sources)
+F05 [NOW] Per-task conversation files (chats/<taskId>.json with Q/A/sources) [DONE]
 F06 [DONE] Voice input (RecognizerIntent, no dep) + TTS read-out (Android TTS)
 F07 Stop/TTS language follows system locale
 F08 Rename/export conversation (share as Markdown)
@@ -162,8 +162,8 @@ N03 Originals immutable (inputs never rewritten) [DONE]
 N04 [DONE] MediaStore publish (Gallery/Files visibility)
 N05 [DONE] Storage meter + quota warnings at 80%
 N06 [DONE] Orphan cleanup (tasks older than 7 days, keep outputs+logs)
-N07 ZIP project bundle (inputs+plan+outputs+logs) shareable
-N08 Duplicate detection (sha256) before re-import
+N07 ZIP project bundle (inputs+plan+outputs+logs) shareable [DONE]
+N08 Duplicate detection (sha256) before re-import [DONE]
 
 ## Stage O — Security & privacy
 O01 Least-privilege tools, no ambient FS [DONE]
@@ -175,12 +175,12 @@ O06 [DONE] Debug bundle export (zip logs+metadata, one tap, per task)
 O07 [DONE] Privacy screen (what leaves device, per-provider data note)
 O08 [NOW] Redaction before upload (L04 reused for files+text)
 O09 Key rotation + wipe (clear all keys, one tap)
-O10 Audit view in-app (read audit.log per task)
+O10 Audit view in-app (read audit.log per task) [DONE]
 
 ## Stage P — Battery & performance
 P01 Event-driven, no polling loops [DONE]
 P02 Foreground service only during renders [DONE]
-P03 [NOW] Render concurrency = 1 on battery saver
+P03 [NOW] Render concurrency = 1 on battery saver [DONE]
 P04 [NOW] Model unload + handle release post-task (already cleanup; verify)
 P05 Cache ceiling (workspace cache ≤ quota/4, LRU trim)
 P06 Cold-start budget (<2s to interactive on mid devices)
@@ -193,7 +193,7 @@ Q04 [DONE] Onboarding (3 slides: what it is, permissions, first task)
 Q05 [DONE] Empty states with example prompts (tap-to-fill)
 Q06 [NOW] Dark-only honest theme (no fake light mode)
 Q07 Error screens name stage + fix action (retry/resume/export-logs)
-Q08 Haptics on task done (vibrate 50ms, setting)
+Q08 Haptics on task done (vibrate 50ms, setting) [DONE]
 
 ## Stage R — Benchmarks vs competitors
 R01 B1 video ≤60s on mid device (measure, log)
@@ -209,12 +209,12 @@ R10 B10 airplane-mode full local run
 R11 Parity sheet: Grok Bot tasks / Dots flows / Perplexity answers (docs)
 
 ## Stage S — Release hardening
-S01 Versioned versionCode + changelog screen
-S02 Backup rules (exclude workspace/skills cache)
+S01 Versioned versionCode + changelog screen [DONE]
+S02 Backup rules (exclude workspace/skills cache) [DONE]
 S03 ProGuard keep-rules note (debug first, minify later)
 S04 Signed release build + Play checklist
 S05 Crash reporter (local log + user-sent bundle, no silent upload)
-S06 ANR watchdog note + strict-mode in debug
+S06 ANR watchdog note + strict-mode in debug [DONE]
 
 ## Stage T — Beyond 1.0 (200+)
 T01 Home-screen widget (task status + mic)
