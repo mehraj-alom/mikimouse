@@ -45,6 +45,23 @@ fun ResourcesScreen(operatorRoot: File) {
             )
         }
     }
+    GlassCard(Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Benchmark checklist (run on this phone)", style = MaterialTheme.typography.titleMedium)
+            listOf(
+                "B1 video: 2 images + 1 clip → final_video.mp4, watchable",
+                "B2 screenshots → presentation PDF (+PPTX where possible)",
+                "B3 images → merged PDF",
+                "B4 research → answer with 3+ cited sources",
+                "B5 compress → visibly smaller, still playable",
+                "B6 OCR text visible in log with char count",
+                "B7 URLs in instruction → downloaded + organized",
+                "B8 social preset words (tiny/small) → smaller file",
+                "B9 custom endpoint answer appears in chat",
+                "B10 airplane mode → offline blocks, local plan works",
+            ).forEach { Text("☐ $it", style = MaterialTheme.typography.bodySmall) }
+        }
+    }
 }
 
 @Composable

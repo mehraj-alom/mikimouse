@@ -25,6 +25,7 @@ import com.mikimouse.app.intents.OperatorIntents
 import com.mikimouse.app.media.AndroidMediaRenderer
 import com.mikimouse.app.media.AndroidPdfRenderer
 import com.mikimouse.app.media.FrameGrabber
+import com.mikimouse.app.media.ImageTools
 import com.mikimouse.app.media.OcrReader
 import com.mikimouse.app.media.SlideshowEncoder
 import com.mikimouse.app.models.SecureKeyStore
@@ -260,6 +261,20 @@ fun OperatorScreen(operatorRoot: File) {
             }
             if (wantVideo) {
                 stage = "rendering video"
+                // Battery-aware deferral (K04): heavy renders pause under 20% instead of dying mid-encode.
+                val bm = ctx.getSystemService(android.content.Context.BATTERY_SERVICE) as android.os.BatteryManager
+                val pct = (bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY))
+                if (pct in 1..19) {
+                    lines += "Battery ${pct}% — render deferred. Plug in, then Resume."
+                    tasks.transition(taskId, TaskState.PAUSED)
+                    withContext(Dispatchers.Main) {
+                        log = lines
+                        lastTaskId = taskId
+                        refreshIncomplete()
+                    }
+                    Notifications.notify(ctx, taskId.hashCode(), "Render deferred", "Battery ${pct}% — plug in and Resume.")
+                    return
+                }
                 if (images.isNotEmpty()) {
                     val secs = Regex("(\\d{1,3})\\s*-?\\s*second").find(spec.instruction.lowercase())
                         ?.groupValues?.get(1)?.toIntOrNull()?.coerceIn(5, 180) ?: 30
@@ -328,6 +343,22 @@ fun OperatorScreen(operatorRoot: File) {
                 }
             }
             val pdfInputs = imported.filter { it.extension.lowercase() == "pdf" }
+            val lowAll = spec.instruction.lowercase()
+            if (("rotat" in lowAll || "flip" in lowAll || "convert" in lowAll || "resize" in lowAll) && images.isNotEmpty()) {
+                stage = "transforming images"
+                val deg = Regex("(\\d{2,3})\\s*deg").find(lowAll)?.groupValues?.get(1)?.toFloatOrNull()
+                    ?: if ("90" in lowAll) 90f else 0f
+                val fmt = if ("png" in lowAll) "png" else if ("webp" in lowAll) "webp" else "jpg"
+                images.forEach { img ->
+                    try {
+                        val outName = img.nameWithoutExtension + "-edit.$fmt"
+                        ImageTools.transform(img, File(ws.output, outName), rotateDeg = deg, flip = "flip" in lowAll, format = fmt)
+                        lines += "Transformed ${img.name} → $outName"
+                    } catch (t: Throwable) {
+                        lines += "Transform failed for ${img.name}: ${t.message?.take(100)}"
+                    }
+                }
+            }
             if ("merge" in spec.instruction.lowercase() && pdfInputs.size >= 2) {
                 stage = "merging PDFs"
                 try {
