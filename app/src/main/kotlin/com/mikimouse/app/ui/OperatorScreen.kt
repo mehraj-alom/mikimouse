@@ -401,9 +401,9 @@ fun OperatorScreen(operatorRoot: File) {
                     lines += "Frame extract failed: ${t.message?.take(120)}"
                 }
             }
-            if (("watermark" in lowAll || "copyright" in lowAll) && images.isNotEmpty()) {
+            if (("watermark" in lowMsg || "copyright" in lowMsg) && images.isNotEmpty()) {
                 stage = "watermarking"
-                val mark = Regex("(?:watermark|copyright)\\s+(?:as\\s+|[:=]\\s*)?(.{1,48})").find(lowAll)?.groupValues?.get(1)?.trim().ifBlank { "MikiMouse" }
+                val mark = Regex("(?:watermark|copyright)\\s+(?:as\\s+|[:=]\\s*)?(.{1,48})").find(lowMsg)?.groupValues?.getOrNull(1)?.trim().takeIf { !it.isNullOrBlank() } ?: "MikiMouse"
                 images.forEach { img ->
                     try {
                         ImageTools.watermark(img, mark, File(ws.output, "${img.nameWithoutExtension}-wm.jpg"))
@@ -414,16 +414,15 @@ fun OperatorScreen(operatorRoot: File) {
                 }
             }
             val pdfInputs = imported.filter { it.extension.lowercase() == "pdf" }
-            val lowAll = spec.instruction.lowercase()
-            if (("rotat" in lowAll || "flip" in lowAll || "convert" in lowAll || "resize" in lowAll) && images.isNotEmpty()) {
+            if (("rotat" in lowMsg || "flip" in lowMsg || "convert" in lowMsg || "resize" in lowMsg) && images.isNotEmpty()) {
                 stage = "transforming images"
-                val deg = Regex("(\\d{2,3})\\s*deg").find(lowAll)?.groupValues?.get(1)?.toFloatOrNull()
-                    ?: if ("90" in lowAll) 90f else 0f
-                val fmt = if ("png" in lowAll) "png" else if ("webp" in lowAll) "webp" else "jpg"
+                val deg = Regex("(\\d{2,3})\\s*deg").find(lowMsg)?.groupValues?.get(1)?.toFloatOrNull()
+                    ?: if ("90" in lowMsg) 90f else 0f
+                val fmt = if ("png" in lowMsg) "png" else if ("webp" in lowMsg) "webp" else "jpg"
                 images.forEach { img ->
                     try {
                         val outName = img.nameWithoutExtension + "-edit.$fmt"
-                        ImageTools.transform(img, File(ws.output, outName), rotateDeg = deg, flip = "flip" in lowAll, format = fmt)
+                        ImageTools.transform(img, File(ws.output, outName), rotateDeg = deg, flip = "flip" in lowMsg, format = fmt)
                         lines += "Transformed ${img.name} → $outName"
                     } catch (t: Throwable) {
                         lines += "Transform failed for ${img.name}: ${t.message?.take(100)}"
@@ -439,7 +438,7 @@ fun OperatorScreen(operatorRoot: File) {
                     lines += "PDF merge failed: ${t.message?.take(120)}"
                 }
             }
-            if ("docx" in lowAll && ocrTexts.isNotEmpty()) {
+            if ("docx" in lowMsg && ocrTexts.isNotEmpty()) {
                 stage = "writing DOCX from OCR text"
                 try {
                     val paras = ocrTexts.flatMap { (name, text) -> listOf("— $name —") + text.split("\n").filter { it.isNotBlank() } }
@@ -559,7 +558,7 @@ fun OperatorScreen(operatorRoot: File) {
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(onClick = { pickFiles.launch(arrayOf("*/*")) }) { Text("Pick files (${picked.size})") }
-                            TextButton(onClick = { pickContact.launch() }) { Text("👤") }
+                            TextButton(onClick = { pickContact.launch(null) }) { Text("👤") }
                             Button(onClick = {
                                 try {
                                     val i = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
