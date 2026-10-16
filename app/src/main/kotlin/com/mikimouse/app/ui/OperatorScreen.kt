@@ -196,9 +196,13 @@ fun OperatorScreen(operatorRoot: File) {
             }
             if ("ocr_image" in p.requiredTools && imagesEarly.isNotEmpty()) {
                 stage = "reading text from images"
-                ocrTexts = OcrReader.readAll(imagesEarly)
+                val raw = OcrReader.readAll(imagesEarly)
+                // Redact PII before anything leaves the device (L04).
+                ocrTexts = raw.mapValues { Redactor.mask(it.value) }
+                val redacted = raw.any { Redactor.looksSensitive(it.value) }
                 val chars = ocrTexts.values.sumOf { it.length }
-                lines += "OCR: ${ocrTexts.size} image(s), $chars chars extracted"
+                lines += "OCR: ${ocrTexts.size} image(s), $chars chars extracted" +
+                    if (redacted) " (PII masked before any upload)" else ""
             }
             // Real downloads: URLs in the instruction are fetched (capped) into the workspace.
             if ("download_to_workspace" in p.requiredTools || "web_search" in p.requiredTools) {
@@ -300,6 +304,35 @@ fun OperatorScreen(operatorRoot: File) {
                     lines += "PPTX unavailable on-device (no java.awt); rendered real PDF + Markdown instead."
                 } else {
                     lines += "Rendered presentation.pptx (${pptx.length()} bytes)."
+                }
+            }
+            if ("torch" in spec.instruction.lowercase() || "flashlight" in spec.instruction.lowercase()) {
+                stage = "device action"
+                val on = "off" !in spec.instruction.lowercase()
+                val r = DeviceActions.setTorch(ctx, on)
+                lines += "Torch: $r"
+                if (r.startsWith("needs")) lines += "Grant Camera in system Settings, then run again."
+            }
+            val videoInputs = imported.filter {
+                it.extension.lowercase() in setOf("mp4", "mov", "mkv", "3gp")
+            }
+            if (("frame" in spec.instruction.lowercase() || "thumbnail" in spec.instruction.lowercase()) && videoInputs.isNotEmpty()) {
+                stage = "extracting frames"
+                try {
+                    val frames = FrameGrabber.extract(videoInputs.first(), File(ws.output, "frames"))
+                    lines += "Frames: ${frames.size} saved (${frames.sumOf { it.length() }} bytes)"
+                } catch (t: Throwable) {
+                    lines += "Frame extract failed: ${t.message?.take(120)}"
+                }
+            }
+            val pdfInputs = imported.filter { it.extension.lowercase() == "pdf" }
+            if ("merge" in spec.instruction.lowercase() && pdfInputs.size >= 2) {
+                stage = "merging PDFs"
+                try {
+                    val merged = AndroidPdfRenderer.merge(pdfInputs, File(ws.output, "merged.pdf"))
+                    lines += "Merged PDF: ${merged.length()} bytes"
+                } catch (t: Throwable) {
+                    lines += "PDF merge failed: ${t.message?.take(120)}"
                 }
             }
             withContext(Dispatchers.Main) {

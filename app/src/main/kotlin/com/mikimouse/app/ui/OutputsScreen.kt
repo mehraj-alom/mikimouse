@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.mikimouse.app.data.TaskRepository
 import com.mikimouse.app.intents.OperatorIntents
+import com.mikimouse.app.media.MediaStorePublish
 import com.mikimouse.app.outputs.Notifications
 import com.mikimouse.app.outputs.OutputFile
 import com.mikimouse.app.outputs.OutputStore
@@ -73,13 +74,18 @@ fun OutputsScreen(operatorRoot: File) {
             }, onShare = {
                 try { OperatorIntents.shareFile(ctx, o.file) }
                 catch (_: Exception) { msg = "Share failed for ${o.file.name}" }
+            }, onGallery = {
+                try {
+                    val uri = MediaStorePublish.publish(ctx, o.file)
+                    msg = "Visible in Gallery/Files ✓"
+                } catch (t: Exception) { msg = "Gallery: ${t.message?.take(120)}" }
             }, onDelete = { o.file.delete(); refresh() })
         }
     }
 }
 
 @Composable
-fun OutputCard(o: OutputFile, onOpen: () -> Unit, onExport: () -> Unit, onRemind: () -> Unit, onShare: () -> Unit, onDelete: () -> Unit) {
+fun OutputCard(o: OutputFile, onOpen: () -> Unit, onExport: () -> Unit, onRemind: () -> Unit, onShare: () -> Unit, onGallery: () -> Unit, onDelete: () -> Unit) {
     GlassCard(Modifier.fillMaxWidth()) {
         Column {
             Text(o.file.name, style = MaterialTheme.typography.bodyMedium)
@@ -88,6 +94,7 @@ fun OutputCard(o: OutputFile, onOpen: () -> Unit, onExport: () -> Unit, onRemind
                 TextButton(onClick = onOpen) { Text("Open") }
                 TextButton(onClick = onExport) { Text("Export") }
                 TextButton(onClick = onShare) { Text("Share") }
+                TextButton(onClick = onGallery) { Text("Gallery") }
                 TextButton(onClick = onRemind) { Text("Remind 1h") }
                 TextButton(onClick = onDelete) { Text("Delete") }
             }
