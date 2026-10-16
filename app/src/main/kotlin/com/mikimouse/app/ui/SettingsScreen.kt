@@ -9,6 +9,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.mikimouse.app.data.KeystoreKeysFile
 import com.mikimouse.app.data.SettingsStore
+import com.mikimouse.app.intents.OperatorIntents
 import com.mikimouse.app.models.SecureKeyStore
 import com.mikimouse.operator.ConnectorRegistry
 import com.mikimouse.operator.CpuPolicy
@@ -207,7 +208,17 @@ fun SettingsScreen(operatorRoot: File) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Connectors (intent-first)", style = MaterialTheme.typography.titleMedium)
                     ConnectorRegistry.all.forEach { c ->
-                        Text("${if (c.available) "✓" else "✕"} ${c.label}: ${c.note}", style = MaterialTheme.typography.bodySmall)
+                        val live = remember(c.id) { OperatorIntents.canHandle(ctx, c.deepLink) }
+                        Row {
+                            Text(
+                                "${if (c.available || live) "✓" else "✕"} ${c.label}: ${c.note}",
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.weight(1f),
+                            )
+                            if (live) {
+                                TextButton(onClick = { OperatorIntents.openInApp(ctx, c.deepLink) }) { Text("Open") }
+                            }
+                        }
                     }
                     Text("No AccessibilityService. Banking apps untouched.", style = MaterialTheme.typography.bodySmall)
                     if (msg.isNotBlank()) Text(msg, style = MaterialTheme.typography.bodySmall)

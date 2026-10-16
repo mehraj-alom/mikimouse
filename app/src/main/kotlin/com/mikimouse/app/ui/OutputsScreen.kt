@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.mikimouse.app.data.TaskRepository
+import com.mikimouse.app.intents.OperatorIntents
 import com.mikimouse.app.outputs.Notifications
 import com.mikimouse.app.outputs.OutputFile
 import com.mikimouse.app.outputs.OutputStore
@@ -69,13 +70,16 @@ fun OutputsScreen(operatorRoot: File) {
             }, onExport = { exportFile = o.file; createDoc.launch(o.file.name) }, onRemind = {
                 Notifications.remindInOneHour(ctx, o.file.name)
                 msg = "Reminder set for ${o.file.name} (1 hour)"
+            }, onShare = {
+                try { OperatorIntents.shareFile(ctx, o.file) }
+                catch (_: Exception) { msg = "Share failed for ${o.file.name}" }
             }, onDelete = { o.file.delete(); refresh() })
         }
     }
 }
 
 @Composable
-fun OutputCard(o: OutputFile, onOpen: () -> Unit, onExport: () -> Unit, onRemind: () -> Unit, onDelete: () -> Unit) {
+fun OutputCard(o: OutputFile, onOpen: () -> Unit, onExport: () -> Unit, onRemind: () -> Unit, onShare: () -> Unit, onDelete: () -> Unit) {
     GlassCard(Modifier.fillMaxWidth()) {
         Column {
             Text(o.file.name, style = MaterialTheme.typography.bodyMedium)
@@ -83,6 +87,7 @@ fun OutputCard(o: OutputFile, onOpen: () -> Unit, onExport: () -> Unit, onRemind
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 TextButton(onClick = onOpen) { Text("Open") }
                 TextButton(onClick = onExport) { Text("Export") }
+                TextButton(onClick = onShare) { Text("Share") }
                 TextButton(onClick = onRemind) { Text("Remind 1h") }
                 TextButton(onClick = onDelete) { Text("Delete") }
             }

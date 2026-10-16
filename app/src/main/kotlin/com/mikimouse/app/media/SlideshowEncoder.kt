@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaCodec
 import android.media.MediaCodecInfo
+import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMuxer
 import java.io.File
@@ -180,5 +181,79 @@ object SlideshowEncoder {
             }
         }
         return yuv
+    }
+
+    /** Mux an audio file under a silent video (real "add music"). */
+    fun addAudio(video: File, audio: File, out: File): File {
+        out.parentFile?.mkdirs()
+        if (out.exists()) out.delete()
+        val vex = MediaExtractor()
+        val aex = MediaExtractor()
+        try {
+            vex.setDataSource(video.absolutePath)
+            aex.setDataSource(audio.absolutePath)
+            var vTrack = -1
+            var aTrack = -1
+            for (i in 0 until vex.trackCount) {
+                val m = vex.getTrackFormat(i).getString(MediaFormat.KEY_MIME) ?: ""
+                if (m.startsWith("video/")) { vTrack = i; break }
+            }
+            for (i in 0 until aex.trackCount) {
+                val m = aex.getTrackFormat(i).getString(MediaFormat.KEY_MIME) ?: ""
+                if (m.startsWith("audio/")) { aTrack = i; break }
+            }
+            if (vTrack < 0) throw IllegalStateException("no video track in ${video.name}")
+            if (aTrack < 0) throw IllegalStateException("no audio track in ${audio.name}")
+            vex.selectTrack(vTrack)
+            aex.selectTrack(aTrack)
+            val videoDuration = AndroidMediaRenderer.probe(video)?.durationUs ?: 0L
+            val muxer = MediaMuxer(out.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+            try {
+                val vOut = muxer.addTrack(vex.getTrackFormat(vTrack))
+                val aOut = muxer.addTrack(aex.getTrackFormat(aTrack))
+                muxer.start()
+                val buf = java.nio.ByteBuffer.allocate(512 * 1024)
+                val info = android.media.MediaCodec.BufferInfo()
+                var vPts = vex.sampleTime
+                var aPts = aex.sampleTime
+                var vDone = vPts < 0
+                var aDone = aPts < 0
+                while (!vDone || !aDone) {
+                    val takeVideo = !vDone && (aDone || vPts <= aPts)
+                    if (takeVideo) {
+                        val n = vex.readSampleData(buf, 0)
+                        if (n < 0 || (videoDuration > 0 && vPts > videoDuration)) vDone = true
+                        else {
+                            info.set(0, n, vPts, vex.sampleFlags)
+                            muxer.writeSampleData(vOut, buf, info)
+                            vex.advance()
+                            vPts = vex.sampleTime
+                            if (vPts < 0) vDone = true
+                        }
+                    } else {
+                        val n = aex.readSampleData(buf, 0)
+                        if (n < 0 || (videoDuration > 0 && aPts > videoDuration)) aDone = true
+                        else {
+                            info.set(0, n, aPts, aex.sampleFlags)
+                            muxer.writeSampleData(aOut, buf, info)
+                            aex.advance()
+                            aPts = aex.sampleTime
+                            if (aPts < 0) aDone = true
+                        }
+                    }
+                }
+                muxer.stop()
+            } finally {
+                try { muxer.release() } catch (_: Exception) {}
+            }
+            if (!out.exists() || out.length() == 0L) {
+                out.delete()
+                throw IllegalStateException("music mux produced nothing")
+            }
+            return out
+        } finally {
+            vex.release()
+            aex.release()
+        }
     }
 }
