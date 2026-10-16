@@ -43,9 +43,9 @@ C10 [DONE] Compress preset (bitrate ladder 4M/2M/1M +720p/480p)
 C11 Extract frames as images (thumbnails/contact sheet)
 C12 Rotate/flip + format convert (mp4/mkv→mp4, png↔jpg, gif first-frame)
 C13 Loudness normalize note + passthrough (no fake DSP)
-C14 Subtitle burn-in from SRT (draw text frames, honest sampling note)
+C14 Subtitle burn-in from SRT (draw text frames, honest sampling note) [DONE]
 C15 Watermark/copyright text overlay option
-C16 Batch queue: N media jobs sequentially under quota
+C16 Batch queue: N media jobs sequentially under quota [DONE]
 C17 Render progress % via codec frame callbacks
 C18 Cancel render mid-flight, keep partial + resume
 C19 MediaStore export (video/images visible in Gallery)
@@ -58,8 +58,8 @@ D03 Android PDF fallback (PdfDocument, no java.awt) [DONE]
 D04 OCR text feeds outlines (not filenames) [DONE]
 D05 [NOW] PPTX template picker (3 built-in design systems: ink/minimal, ocean, sunset)
 D06 Slide images embedded from inputs (draw into PDF; PPTX where awt allows)
-D07 DOCX writer (POI XWPF — JVM; Android fallback note)
-D08 Spreadsheet writer (CSV real; XLSX via POI JVM-only note)
+D07 DOCX writer (POI XWPF — JVM; Android fallback note) [DONE]
+D08 Spreadsheet writer (CSV real; XLSX via POI JVM-only note) [DONE]
 D09 PDF merge/split via PdfDocument
 D10 Document→PDF preview for every artifact
 D11 Export via MediaStore Downloads (visible outside app)
@@ -110,7 +110,7 @@ H05 [DONE] Contact picker → message draft (never auto-send)
 H06 [DONE] Map/location share (geo: intent)
 H07 [DONE] Alarm/timer set (Clock intent, approval)
 H08 File opener routing by mime (Gallery/Docs/Players)
-H09 Print via Android print framework (PDF/PPTX)
+H09 Print via Android print framework (PDF/PPTX) [DONE]
 H10 Deep-link probe before claiming support (honest ✕)
 
 ## Stage I — Web operator (sandboxed)
@@ -151,7 +151,7 @@ L06 On-device layout description (text-block geometry → reading order)
 M01 [DONE] Flashlight toggle (CameraManager, permission + approval)
 M02 [NOW] System settings shortcuts (battery/data/sound pages)
 M03 [DONE] Clipboard copy (answers/artifacts text)
-M04 Brightness/volume query + adjustment intents (approval)
+M04 Brightness/volume query + adjustment intents (approval) [DONE]
 M05 DND/alarms: settings-page only (policy-gated, no silent changes)
 M06 No keyguard bypass, no secure-settings writes (documented refusal)
 

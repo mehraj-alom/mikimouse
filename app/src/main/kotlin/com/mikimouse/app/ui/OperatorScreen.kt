@@ -421,6 +421,18 @@ fun OperatorScreen(operatorRoot: File, initialInstruction: String = "Create a pr
                 withContext(Dispatchers.Main) { OperatorIntents.openDisplaySettings(ctx) }
                 lines += "Display settings opened (brightness needs a system setting — change it there)."
             }
+            if ("print" in lowMsg) {
+                stage = "print"
+                val printable = ws.output.listFiles()?.firstOrNull {
+                    it.extension.lowercase() in setOf("pdf", "png", "jpg", "jpeg")
+                }
+                if (printable != null) {
+                    withContext(Dispatchers.Main) { OperatorIntents.printPdf(ctx, printable) }
+                    lines += "Print preview opened for ${printable.name}."
+                } else {
+                    lines += "Nothing printable yet — render a PDF or image first."
+                }
+            }
             val videoInputs = imported.filter {
                 it.extension.lowercase() in setOf("mp4", "mov", "mkv", "3gp")
             }
