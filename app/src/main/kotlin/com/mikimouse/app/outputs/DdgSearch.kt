@@ -8,19 +8,21 @@ import java.security.MessageDigest
 import java.net.URLEncoder
 
 object DdgSearch {
-    data class Answer(val abstract: String, val sources: List<ChatSource>)
+    data class Answer(val abstract: String, val sources: List<ChatSource>, val stale: Boolean = false)
 
     private fun key(query: String): String {
         val d = MessageDigest.getInstance("SHA-256")
         return d.digest(query.toByteArray()).joinToString("") { "%02x".format(it) }.take(16)
     }
 
-    /** Cached answers (24h) so repeat questions cost nothing. */
+    /** Cached answers (24h). Offline: reuses stale packs, labeled. */
     fun askCached(query: String, cacheDir: File, timeoutMs: Int = 20_000, maxAgeH: Long = 24): Answer {
         cacheDir.mkdirs()
         val f = File(cacheDir, "ddg-${key(query)}.json")
-        if (f.exists() && System.currentTimeMillis() - f.lastModified() < maxAgeH * 3600 * 1000) {
-            try {
+        fun read(stale: Boolean): Answer? {
+            if (!f.exists()) return null
+            if (!stale && System.currentTimeMillis() - f.lastModified() > maxAgeH * 3600 * 1000) return null
+            return try {
                 val o = JSONObject(f.readText())
                 val srcs = mutableListOf<ChatSource>()
                 val arr = o.optJSONArray("sources")
@@ -28,23 +30,29 @@ object DdgSearch {
                     val s = arr.optJSONObject(i) ?: continue
                     srcs += ChatSource(s.optString("title"), s.optString("url"), s.optString("snippet"))
                 }
-                return Answer(o.optString("abstract"), srcs)
-            } catch (_: Exception) {}
+                Answer(o.optString("abstract"), srcs, stale)
+            } catch (_: Exception) { null }
         }
-        val ans = ask(query, timeoutMs)
+        read(false)?.let { return it }
         try {
-            val o = JSONObject()
-            o.put("abstract", ans.abstract)
-            val arr = org.json.JSONArray()
-            ans.sources.forEach {
-                val s = JSONObject()
-                s.put("title", it.title); s.put("url", it.url); s.put("snippet", it.snippet)
-                arr.put(s)
-            }
-            o.put("sources", arr)
-            f.writeText(o.toString())
-        } catch (_: Exception) {}
-        return ans
+            val ans = ask(query, timeoutMs)
+            try {
+                val o = JSONObject()
+                o.put("abstract", ans.abstract)
+                val arr = org.json.JSONArray()
+                ans.sources.forEach {
+                    val s = JSONObject()
+                    s.put("title", it.title); s.put("url", it.url); s.put("snippet", it.snippet)
+                    arr.put(s)
+                }
+                o.put("sources", arr)
+                f.writeText(o.toString())
+            } catch (_: Exception) {}
+            return ans
+        } catch (_: Exception) {
+            // E09: offline research pack — stale answers beat no answers, labeled as such.
+            return read(true) ?: throw IllegalStateException("offline and no saved answer for this query")
+        }
     }
 
     fun ask(query: String, timeoutMs: Int = 20_000): Answer {

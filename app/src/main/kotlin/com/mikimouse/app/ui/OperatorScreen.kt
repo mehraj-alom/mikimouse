@@ -263,11 +263,11 @@ fun OperatorScreen(operatorRoot: File, initialInstruction: String = "Create a pr
             if ("download_to_workspace" in p.requiredTools || "web_search" in p.requiredTools) {
                 val urls = Regex("https?://[^\\s\"']+").findAll(spec.instruction).map { it.value }.toList()
                 if (urls.isEmpty()) {
-                    if ("web_search" in p.requiredTools && budget.network != NetworkPolicy.OFFLINE_ONLY) {
+                    if ("web_search" in p.requiredTools) {
                         stage = "searching the web (keyless, cached 24h)"
                         try {
                             val ans = DdgSearch.askCached(spec.instruction.take(300), ws.cache)
-                            lines += "Web answer: ${ans.abstract.take(400)}"
+                            lines += "Web answer${if (ans.stale) " (offline pack, may be dated)" else ""}: ${ans.abstract.take(400)}"
                             ans.sources.forEach { srcs += it }
                         } catch (t: Throwable) {
                             lines += "Web search failed (${t.message?.take(100)}); answer uses on-device knowledge."
