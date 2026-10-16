@@ -330,6 +330,26 @@ fun OperatorScreen(operatorRoot: File) {
                 lines += "Torch: $r"
                 if (r.startsWith("needs")) lines += "Grant Camera in system Settings, then run again."
             }
+            val lowMsg = spec.instruction.lowercase()
+            val phone = Regex("\\+?\\d[\\d\\s-]{7,}\\d").find(spec.instruction)?.value
+            if (("message" in lowMsg || "sms" in lowMsg || "text " in lowMsg) && phone != null) {
+                stage = "message draft"
+                withContext(Dispatchers.Main) {
+                    OperatorIntents.smsDraft(ctx, phone.replace(Regex("[\\s-]"), ""), spec.instruction.take(300))
+                }
+                lines += "Message draft opened for $phone (you send — never auto-sent)."
+            }
+            if (("map of" in lowMsg || "directions to" in lowMsg || "where is" in lowMsg)) {
+                stage = "map"
+                val q = spec.instruction.substringAfter("map of", spec.instruction.substringAfter("directions to", spec.instruction.substringAfter("where is", spec.instruction))).take(120)
+                withContext(Dispatchers.Main) { OperatorIntents.mapSearch(ctx, q) }
+                lines += "Map opened for: ${q.take(80)}"
+            }
+            if (("alarm" in lowMsg || "wake me" in lowMsg) && "clock" !in lowMsg) {
+                stage = "alarm"
+                withContext(Dispatchers.Main) { OperatorIntents.setAlarm(ctx, spec.instruction.take(120)) }
+                lines += "Alarm screen opened (you confirm the time)."
+            }
             val videoInputs = imported.filter {
                 it.extension.lowercase() in setOf("mp4", "mov", "mkv", "3gp")
             }
@@ -537,6 +557,10 @@ fun OperatorScreen(operatorRoot: File) {
                                             Text(if (speaking) "🔊…" else "🔊 Listen")
                                         }
                                         if (speaking) TextButton(onClick = { stopSpeak() }) { Text("Stop") }
+                                        TextButton(onClick = {
+                                            val cm = ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                            cm.setPrimaryClip(android.content.ClipData.newPlainText("answer", m.text))
+                                        }) { Text("Copy") }
                                     }
                                 }
                             }
@@ -606,7 +630,21 @@ fun OperatorScreen(operatorRoot: File) {
                             Text(it, style = MaterialTheme.typography.bodySmall)
                         }
                         if (lastTaskId != null) {
-                            TextButton(onClick = { exportDebug(lastTaskId!!) }) { Text("Export debug bundle") }
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                TextButton(onClick = { exportDebug(lastTaskId!!) }) { Text("Export debug bundle") }
+                                TextButton(onClick = {
+                                    scope.launch(Dispatchers.IO) {
+                                        try {
+                                            val dir = File(operatorRoot, "tasks/$lastTaskId")
+                                            val bundle = File(dir, "cache/project-$lastTaskId.zip")
+                                            ArchiveTool.zip(dir.listFiles()?.toList().orEmpty().filter { it.exists() }, bundle)
+                                            withContext(Dispatchers.Main) { OperatorIntents.shareFile(ctx, bundle) }
+                                        } catch (t: Throwable) {
+                                            withContext(Dispatchers.Main) { log = log + "Bundle failed: ${t.message?.take(120)}" }
+                                        }
+                                    }
+                                }) { Text("Share project bundle") }
+                            }
                         }
                     }
                 }

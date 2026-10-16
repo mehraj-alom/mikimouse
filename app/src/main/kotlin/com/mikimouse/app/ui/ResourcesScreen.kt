@@ -11,16 +11,24 @@ import com.mikimouse.app.runtime.ResourceMonitor
 import com.mikimouse.operator.CapabilityDetector
 import com.mikimouse.operator.DeviceCaps
 import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 @Composable
 fun ResourcesScreen(operatorRoot: File) {
     val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
     var snap by remember { mutableStateOf<DeviceCaps?>(null) }
     var wsMB by remember { mutableStateOf(0L) }
-    LaunchedEffect(Unit) {
-        snap = ResourceMonitor.snapshot(ctx)
-        wsMB = ResourceMonitor.workspaceSizeMB(File(operatorRoot, "tasks"))
+    var msg by remember { mutableStateOf("") }
+    fun refresh() {
+        scope.launch(Dispatchers.IO) {
+            val s = ResourceMonitor.snapshot(ctx)
+            val w = ResourceMonitor.workspaceSizeMB(File(operatorRoot, "tasks"))
+            kotlinx.coroutines.withContext(Dispatchers.Main) { snap = s; wsMB = w }
+        }
     }
+    LaunchedEffect(Unit) { refresh() }
     val s = snap
     GlassCard(Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -43,6 +51,35 @@ fun ResourcesScreen(operatorRoot: File) {
                     "${settings.cpu} · net ${settings.network}",
                 style = MaterialTheme.typography.bodySmall,
             )
+            if (wsMB >= settings.storageQuotaMB * 4L / 5) {
+                Text("⚠ Workspace at 80%+ of quota — clean caches.", style = MaterialTheme.typography.bodySmall)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = {
+                    scope.launch(Dispatchers.IO) {
+                        File(operatorRoot, "tasks").listFiles()?.forEach { File(it, "cache").deleteRecursively() }
+                        refresh()
+                        msg = "Caches cleaned"
+                    }
+                }) { Text("Clean caches") }
+                TextButton(onClick = {
+                    scope.launch(Dispatchers.IO) {
+                        val week = System.currentTimeMillis() - 7L * 24 * 3600 * 1000
+                        var n = 0
+                        File(operatorRoot, "tasks").listFiles()?.forEach { t ->
+                            if (t.lastModified() < week) {
+                                File(t, "workspace").deleteRecursively()
+                                File(t, "cache").deleteRecursively()
+                                n++
+                            }
+                        }
+                        refresh()
+                        msg = "Trimmed $n old task(s), outputs kept"
+                    }
+                }) { Text("Trim week-old temp") }
+                TextButton(onClick = { refresh() }) { Text("Refresh") }
+            }
+            if (msg.isNotBlank()) Text(msg, style = MaterialTheme.typography.bodySmall)
         }
     }
     GlassCard(Modifier.fillMaxWidth()) {
