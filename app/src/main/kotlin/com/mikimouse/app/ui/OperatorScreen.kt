@@ -216,9 +216,9 @@ fun OperatorScreen(operatorRoot: File) {
                 val urls = Regex("https?://[^\\s\"']+").findAll(spec.instruction).map { it.value }.toList()
                 if (urls.isEmpty()) {
                     if ("web_search" in p.requiredTools && budget.network != NetworkPolicy.OFFLINE_ONLY) {
-                        stage = "searching the web (keyless)"
+                        stage = "searching the web (keyless, cached 24h)"
                         try {
-                            val ans = DdgSearch.ask(spec.instruction.take(300))
+                            val ans = DdgSearch.askCached(spec.instruction.take(300), File(ws.cache))
                             lines += "Web answer: ${ans.abstract.take(400)}"
                             ans.sources.forEach { srcs += it }
                         } catch (t: Throwable) {
@@ -242,6 +242,11 @@ fun OperatorScreen(operatorRoot: File) {
                                 val page = WebFetch.extractText(bytes)
                                 if (page.title.isNotBlank() || page.text.isNotBlank()) {
                                     srcs += ChatSource(page.title.ifBlank { name }, u, page.text.take(300))
+                                    // Reader view (I02): clean text saved for offline reading.
+                                    if (page.text.length > 200) {
+                                        File(ws.output, "reader-$name.txt").writeText("${page.title}\n\n${page.text.take(15000)}")
+                                        lines += "Reader view saved for $name"
+                                    }
                                 } else {
                                     srcs += ChatSource(name, u, "${bytes.size} bytes saved")
                                 }

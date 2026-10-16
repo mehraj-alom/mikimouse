@@ -3,10 +3,49 @@ package com.mikimouse.app.outputs
 import com.mikimouse.operator.ChatSource
 import com.mikimouse.operator.WebFetch
 import org.json.JSONObject
+import java.io.File
+import java.security.MessageDigest
 import java.net.URLEncoder
 
 object DdgSearch {
     data class Answer(val abstract: String, val sources: List<ChatSource>)
+
+    private fun key(query: String): String {
+        val d = MessageDigest.getInstance("SHA-256")
+        return d.digest(query.toByteArray()).joinToString("") { "%02x".format(it) }.take(16)
+    }
+
+    /** Cached answers (24h) so repeat questions cost nothing. */
+    fun askCached(query: String, cacheDir: File, timeoutMs: Int = 20_000, maxAgeH: Long = 24): Answer {
+        cacheDir.mkdirs()
+        val f = File(cacheDir, "ddg-${key(query)}.json")
+        if (f.exists() && System.currentTimeMillis() - f.lastModified() < maxAgeH * 3600 * 1000) {
+            try {
+                val o = JSONObject(f.readText())
+                val srcs = mutableListOf<ChatSource>()
+                val arr = o.optJSONArray("sources")
+                if (arr != null) for (i in 0 until arr.length()) {
+                    val s = arr.optJSONObject(i) ?: continue
+                    srcs += ChatSource(s.optString("title"), s.optString("url"), s.optString("snippet"))
+                }
+                return Answer(o.optString("abstract"), srcs)
+            } catch (_: Exception) {}
+        }
+        val ans = ask(query, timeoutMs)
+        try {
+            val o = JSONObject()
+            o.put("abstract", ans.abstract)
+            val arr = org.json.JSONArray()
+            ans.sources.forEach {
+                val s = JSONObject()
+                s.put("title", it.title); s.put("url", it.url); s.put("snippet", it.snippet)
+                arr.put(s)
+            }
+            o.put("sources", arr)
+            f.writeText(o.toString())
+        } catch (_: Exception) {}
+        return ans
+    }
 
     fun ask(query: String, timeoutMs: Int = 20_000): Answer {
         val q = URLEncoder.encode(query, "UTF-8")

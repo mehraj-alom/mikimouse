@@ -38,8 +38,8 @@ C05 probe validation via MediaExtractor [DONE]
 C06 Music mux (A/V interleave, duration-clamped) [DONE]
 C07 Audio trim passthrough (MediaExtractor/Muxer) [DONE]
 C08 Honest blocks (no images / no audio file → named, not faked) [DONE]
-C09 [NOW] Trim/cut video segment (start/end passthrough)
-C10 [NOW] Compress preset (bitrate ladder 4M/2M/1M +720p/480p)
+C09 [DONE] Trim/cut video segment (start/end passthrough)
+C10 [DONE] Compress preset (bitrate ladder 4M/2M/1M +720p/480p)
 C11 Extract frames as images (thumbnails/contact sheet)
 C12 Rotate/flip + format convert (mp4/mkv→mp4, png↔jpg, gif first-frame)
 C13 Loudness normalize note + passthrough (no fake DSP)
@@ -70,7 +70,7 @@ E01 WebFetch capped GET + HTML→text extract [DONE]
 E02 URL fetch wired into run flow with policy gate [DONE]
 E03 Sources (title/url/snippet) into answers + history [DONE]
 E04 Model summary of research (remote when configured) [DONE]
-E05 [NOW] Keyless web search (DuckDuckGo Instant Answer, no key, capped, cited)
+E05 [DONE] Keyless web search (DuckDuckGo Instant Answer, no key, capped, cited)
 E06 Query rewriting (instruction → 3 search queries via model/local rules)
 E07 Multi-source merge (3-5 pages, dedupe, cite each claim)
 E08 Answer caching per query (24h, workspace cache)
@@ -83,7 +83,7 @@ F02 Follow-up suggestions, tap-to-ask [DONE]
 F03 Next-action chips (Export latest, Present this) [DONE]
 F04 Persisted history (session.json, 100 msgs) + Clear [DONE]
 F05 [NOW] Per-task conversation files (chats/<taskId>.json with Q/A/sources)
-F06 [NOW] Voice input (RecognizerIntent, no dep) + TTS read-out (Android TTS)
+F06 [DONE] Voice input (RecognizerIntent, no dep) + TTS read-out (Android TTS)
 F07 Stop/TTS language follows system locale
 F08 Rename/export conversation (share as Markdown)
 F09 Memory preferences honored in answers (name, tone, units)
@@ -95,7 +95,7 @@ G02 HttpSkillInstaller (SKILL.md + references) [DONE]
 G03 Planner requiredSkills; runtime auto-installs temp [DONE]
 G04 Composio + pr-watch one-tap fetch [DONE]
 G05 Keep/Remove + offline refusal [DONE]
-G06 [NOW] Teach mode: save user correction as local skill (name+trigger+notes)
+G06 [DONE] Teach mode: save user correction as local skill (name+trigger+notes)
 G07 Skill usage ledger in audit.log (which skill, which step)
 G08 Skill update check (hash compare, optional refresh)
 G09 Export/import skill pack (zip)
@@ -106,16 +106,16 @@ H01 Intent-first registry (browser/email/drive/wa/tg/canva/yt) [DONE]
 H02 Live availability via PackageManager [DONE]
 H03 Share sheet for every artifact [DONE]
 H04 Calendar insert intent [DONE]
-H05 [NOW] Contact picker → message draft (never auto-send)
-H06 [NOW] Map/location share (geo: intent)
-H07 [NOW] Alarm/timer set (Clock intent, approval)
+H05 [DONE] Contact picker → message draft (never auto-send)
+H06 [DONE] Map/location share (geo: intent)
+H07 [DONE] Alarm/timer set (Clock intent, approval)
 H08 File opener routing by mime (Gallery/Docs/Players)
 H09 Print via Android print framework (PDF/PPTX)
 H10 Deep-link probe before claiming support (honest ✕)
 
 ## Stage I — Web operator (sandboxed)
 I01 Controlled download_to_workspace (cap + checksum) [DONE]
-I02 [NOW] In-app reader view (fetched page rendered as clean text, no JS)
+I02 [DONE] In-app reader view (fetched page rendered as clean text, no JS)
 I03 Form-fill drafts (generate filled PDF/text, user submits — never auto-submit)
 I04 Login-gated sites refused with reason (no credential capture)
 I05 Upload only user-approved files, ledger entry
@@ -126,15 +126,15 @@ I09 Tabular data → CSV (tables extracted honestly)
 I10 Full browser automation: NOT built (would need accessibility — stays P1 w/ disclosure)
 
 ## Stage J — Voice & hands-free
-J01 [NOW] Mic button → speech-to-instruction (RecognizerIntent)
-J02 [NOW] TTS answers with stop control
+J01 [DONE] Mic button → speech-to-instruction (RecognizerIntent)
+J02 [DONE] TTS answers with stop control
 J03 Audio-note input (record → transcribe via on-device? deferred; note shown)
 J04 Call handling: NOT built (telecom restrictions — documented)
 
 ## Stage K — Autonomy (scheduled + triggers)
 K01 Completion notifications [DONE]
 K02 Remind-in-1h via WorkManager [DONE]
-K03 [NOW] Scheduled tasks (daily/weekly instruction, WorkManager periodic, approval on create)
+K03 [DONE] Scheduled tasks (daily/weekly instruction, WorkManager periodic, approval on create)
 K04 [NOW] Battery-aware deferral (skip heavy renders <20% or offer remote)
 K05 [NOW] Overnight queue (all renders sequential, one notification)
 K06 Crash-loop guard (3 fails → PAUSED + notify, never spin)
@@ -142,15 +142,15 @@ K06 Crash-loop guard (3 fails → PAUSED + notify, never spin)
 ## Stage L — Screen understanding
 L01 ML Kit OCR on-device [DONE]
 L02 OCR char counts + per-image text in logs [DONE]
-L03 [NOW] Screenshot batch mode (N screenshots → one outline)
-L04 [NOW] Redaction mode (detect emails/phones/OTPs → mask before any upload)
+L03 [DONE] Screenshot batch mode (N screenshots → one outline)
+L04 [DONE] Redaction mode (detect emails/phones/OTPs → mask before any upload)
 L05 Vision-model path (remote multimodal when provider supports; labeled)
 L06 On-device layout description (text-block geometry → reading order)
 
 ## Stage M — Device actions (safe subset, approval-gated)
-M01 [NOW] Flashlight toggle (CameraManager, permission + approval)
+M01 [DONE] Flashlight toggle (CameraManager, permission + approval)
 M02 [NOW] System settings shortcuts (battery/data/sound pages)
-M03 [NOW] Clipboard copy (answers/artifacts text)
+M03 [DONE] Clipboard copy (answers/artifacts text)
 M04 Brightness/volume query + adjustment intents (approval)
 M05 DND/alarms: settings-page only (policy-gated, no silent changes)
 M06 No keyguard bypass, no secure-settings writes (documented refusal)
@@ -159,9 +159,9 @@ M06 No keyguard bypass, no secure-settings writes (documented refusal)
 N01 SAF import (persistable URIs, streaming) [DONE]
 N02 SAF export + FileProvider share/open [DONE]
 N03 Originals immutable (inputs never rewritten) [DONE]
-N04 [NOW] MediaStore publish (Gallery/Files visibility)
-N05 [NOW] Storage meter + quota warnings at 80%
-N06 [NOW] Orphan cleanup (tasks older than 7 days, keep outputs+logs)
+N04 [DONE] MediaStore publish (Gallery/Files visibility)
+N05 [DONE] Storage meter + quota warnings at 80%
+N06 [DONE] Orphan cleanup (tasks older than 7 days, keep outputs+logs)
 N07 ZIP project bundle (inputs+plan+outputs+logs) shareable
 N08 Duplicate detection (sha256) before re-import
 
@@ -171,8 +171,8 @@ O02 No AccessibilityService in manifest [DONE]
 O03 Banking apps untouched (no overlays/input capture) [DONE]
 O04 High-risk always-approve + deny-keywords [DONE]
 O05 Network/upload ledger per task [DONE]
-O06 [NOW] Debug bundle export (zip logs+metadata, one tap, per task)
-O07 [NOW] Privacy screen (what leaves device, per-provider data note)
+O06 [DONE] Debug bundle export (zip logs+metadata, one tap, per task)
+O07 [DONE] Privacy screen (what leaves device, per-provider data note)
 O08 [NOW] Redaction before upload (L04 reused for files+text)
 O09 Key rotation + wipe (clear all keys, one tap)
 O10 Audit view in-app (read audit.log per task)
@@ -189,8 +189,8 @@ P06 Cold-start budget (<2s to interactive on mid devices)
 Q01 Liquid glass system + bottom nav [DONE]
 Q02 Task timeline with live step [DONE]
 Q03 Resource dashboard [DONE]
-Q04 [NOW] Onboarding (3 slides: what it is, permissions, first task)
-Q05 [NOW] Empty states with example prompts (tap-to-fill)
+Q04 [DONE] Onboarding (3 slides: what it is, permissions, first task)
+Q05 [DONE] Empty states with example prompts (tap-to-fill)
 Q06 [NOW] Dark-only honest theme (no fake light mode)
 Q07 Error screens name stage + fix action (retry/resume/export-logs)
 Q08 Haptics on task done (vibrate 50ms, setting)
