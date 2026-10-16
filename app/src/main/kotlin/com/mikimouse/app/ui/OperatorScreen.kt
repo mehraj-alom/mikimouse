@@ -187,12 +187,6 @@ fun OperatorScreen(operatorRoot: File, initialInstruction: String = "Create a pr
             }
         }
     }
-    val contactPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        val uri = pendingContactUri
-        pendingContactUri = null
-        if (granted && uri != null) fillContact(uri)
-        else log = log + "Contacts permission needed to read the number"
-    }
     val exportDoc = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("*/*")) { uri ->
         val dir = lastOutputDir
         val name = exportName
