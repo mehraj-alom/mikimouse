@@ -55,6 +55,7 @@ fun OperatorScreen(operatorRoot: File, initialInstruction: String = "Create a pr
     var running by remember { mutableStateOf(false) }
     var plan by remember { mutableStateOf<TaskPlan?>(null) }
     var currentStep by remember { mutableStateOf<String?>(null) }
+    var pendingContactUri by remember { mutableStateOf<Uri?>(null) }
     var pendingStep by remember { mutableStateOf<PlanStep?>(null) }
     var pendingGate by remember { mutableStateOf<CompletableDeferred<Boolean>?>(null) }
     var incomplete by remember { mutableStateOf<List<PersistedTask>>(emptyList()) }
@@ -133,6 +134,33 @@ fun OperatorScreen(operatorRoot: File, initialInstruction: String = "Create a pr
         previewPlan()
     }
     val notifPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    fun fillContact(uri: Uri) {
+        try {
+            var name = "contact"
+            var number: String? = null
+            ctx.contentResolver.query(uri, null, null, null, null)?.use { c ->
+                if (c.moveToFirst()) {
+                    val ni = c.getColumnIndex(android.provider.ContactsContract.Contacts.DISPLAY_NAME)
+                    if (ni >= 0) name = c.getString(ni) ?: name
+                    val idIdx = c.getColumnIndex(android.provider.ContactsContract.Contacts._ID)
+                    val id = if (idIdx >= 0) c.getString(idIdx) else null
+                    if (id != null) {
+                        ctx.contentResolver.query(
+                            android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                            arrayOf(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER),
+                            "${android.provider.ContactsContract.CommonDataKinds.Phone.CONTACT_ID}=?",
+                            arrayOf(id), null,
+                        )?.use { p ->
+                            if (p.moveToFirst()) number = p.getString(0)
+                        }
+                    }
+                }
+            }
+            instruction = if (number != null) "Message $number ($name): " else "Message $name: "
+            previewPlan()
+        } catch (_: Exception) {}
+    }
+
     val micListen = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { res ->
         if (res.resultCode == Activity.RESULT_OK) {
             val heard = res.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
@@ -144,17 +172,19 @@ fun OperatorScreen(operatorRoot: File, initialInstruction: String = "Create a pr
     }
     val pickContact = rememberLauncherForActivityResult(ActivityResultContracts.PickContact()) { uri ->
         if (uri != null) {
-            try {
-                ctx.contentResolver.query(uri, null, null, null, null)?.use { c ->
-                    if (c.moveToFirst()) {
-                        val nameIdx = c.getColumnIndex(android.provider.ContactsContract.Contacts.DISPLAY_NAME)
-                        val name = if (nameIdx >= 0) c.getString(nameIdx) else "contact"
-                        instruction = "Message $name: "
-                        previewPlan()
-                    }
-                }
-            } catch (_: Exception) {}
+            if (ctx.checkSelfPermission(android.Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+                contactPerm.launch(android.Manifest.permission.READ_CONTACTS)
+                pendingContactUri = uri
+            } else {
+                fillContact(uri)
+            }
         }
+    }
+    val contactPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        val uri = pendingContactUri
+        pendingContactUri = null
+        if (granted && uri != null) fillContact(uri)
+        else log = log + "Contacts permission needed to read the number"
     }
     val exportDoc = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("*/*")) { uri ->
         val dir = lastOutputDir
@@ -393,7 +423,21 @@ fun OperatorScreen(operatorRoot: File, initialInstruction: String = "Create a pr
             val videoInputs = imported.filter {
                 it.extension.lowercase() in setOf("mp4", "mov", "mkv", "3gp")
             }
-            if (("frame" in spec.instruction.lowercase() || "thumbnail" in spec.instruction.lowercase()) && videoInputs.isNotEmpty()) {                stage = "extracting frames"
+            if (("trim" in lowMsg || ("cut" in lowMsg && "shortcut" !in lowMsg)) && videoInputs.isNotEmpty()) {
+                stage = "trimming video"
+                try {
+                    val fromStart = Regex("first (\\d{1,3})\\s*sec").find(lowMsg)?.groupValues?.get(1)?.toLongOrNull()
+                    val skipFirst = Regex("(?:trim|skip|cut)(?: the)? (?:first|beginning)(?: (\\d{1,3}))?").find(lowMsg)?.groupValues?.get(1)?.toLongOrNull()
+                    val startUs = ((skipFirst ?: 0L) * 1_000_000L)
+                    val endUs = if (fromStart != null) fromStart * 1_000_000L else Long.MAX_VALUE
+                    val trimmed = VideoTrim.trim(videoInputs.first(), File(ws.output, "trimmed.mp4"), startUs, endUs)
+                    lines += "Trimmed: ${trimmed.length()} bytes (kept ${videoInputs.first().name} → trimmed.mp4)"
+                } catch (t: Throwable) {
+                    lines += "Trim failed: ${t.message?.take(120)}"
+                }
+            }
+            if (("frame" in spec.instruction.lowercase() || "thumbnail" in spec.instruction.lowercase()) && videoInputs.isNotEmpty()) {
+                stage = "extracting frames"
                 try {
                     val frames = FrameGrabber.extract(videoInputs.first(), File(ws.output, "frames"))
                     lines += "Frames: ${frames.size} saved (${frames.sumOf { it.length() }} bytes)"
