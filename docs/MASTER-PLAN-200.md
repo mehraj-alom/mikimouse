@@ -74,7 +74,7 @@ E05 [DONE] Keyless web search (DuckDuckGo Instant Answer, no key, capped, cited)
 E06 Query rewriting (instruction → 3 search queries via model/local rules)
 E07 Multi-source merge (3-5 pages, dedupe, cite each claim)
 E08 Answer caching per query (24h, workspace cache) [DONE]
-E09 Offline research pack (saved sources reused, labeled stale)
+E09 Offline research pack (saved sources reused, labeled stale) [DONE]
 E10 B4/B9/B10 on-device checklist [NEXT]
 
 ## Stage F — Conversation & memory (Perplexity parity)
@@ -87,7 +87,7 @@ F06 [DONE] Voice input (RecognizerIntent, no dep) + TTS read-out (Android TTS)
 F07 Stop/TTS language follows system locale
 F08 Rename/export conversation (share as Markdown)
 F09 Memory preferences honored in answers (name, tone, units)
-F10 Long-memory compaction (100-msg cap already; summarize beyond)
+F10 Long-memory compaction (100-msg cap already; summarize beyond) [DONE]
 
 ## Stage G — Skills ecosystem (Grok Bot parity)
 G01 SkillManager registry.json + TEMP/PERMANENT [DONE]
@@ -122,7 +122,7 @@ I05 Upload only user-approved files, ledger entry
 I06 robots.txt respected note + rate limit (1 req/2s per host)
 I07 Offline reading list (saved pages in workspace)
 I08 Link unshorten + preview before download
-I09 Tabular data → CSV (tables extracted honestly)
+I09 Tabular data → CSV (tables extracted honestly) [DONE]
 I10 Full browser automation: NOT built (would need accessibility — stays P1 w/ disclosure)
 
 ## Stage J — Voice & hands-free

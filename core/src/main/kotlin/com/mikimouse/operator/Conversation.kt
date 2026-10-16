@@ -28,7 +28,14 @@ class ConversationStore(
     }
 
     fun append(msg: ChatMessage) {
-        val all = (load() + msg).takeLast(100)
+        var all = load() + msg
+        // F10 compaction: keep first 5 (task roots) + last 80, drop the middle with a marker.
+        if (all.size > 100) {
+            val dropped = all.size - 85
+            all = all.take(5) + ChatMessage("system", "…$dropped older messages compacted…", ts = 0L) + all.takeLast(80)
+        } else {
+            all = all.takeLast(100)
+        }
         file.parentFile?.mkdirs()
         file.writeText(json.encodeToString(all))
     }

@@ -5,10 +5,22 @@ import java.net.URL
 
 object WebFetch {
     const val MAX_BYTES = 10 * 1024 * 1024
+    private val lastHostHit = mutableMapOf<String, Long>()
+
+    @Synchronized
+    private fun politenessDelay(host: String) {
+        // I09: at most one request per 2s per host; never hammer.
+        val now = System.currentTimeMillis()
+        val wait = 2000L - (now - (lastHostHit[host] ?: 0L))
+        if (wait > 0) Thread.sleep(wait)
+        lastHostHit[host] = System.currentTimeMillis()
+    }
 
     data class Page(val url: String, val title: String, val text: String)
 
     fun get(url: String, timeoutMs: Int = 20_000, maxBytes: Int = MAX_BYTES): ByteArray {
+        val host = try { URL(url).host.lowercase() } catch (_: Exception) { "?" }
+        politenessDelay(host)
         val c = (URL(url).openConnection() as HttpURLConnection).apply {
             connectTimeout = timeoutMs
             readTimeout = timeoutMs
