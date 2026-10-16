@@ -502,6 +502,10 @@ fun OperatorScreen(operatorRoot: File) {
             val followUps = FollowUps.suggest(spec.instruction, answerText)
             chatStore.append(ChatMessage("user", spec.instruction))
             chatStore.append(ChatMessage("assistant", answerText, srcs.toList(), followUps))
+            // Per-task conversation file (F05): full Q/A + sources live with the task.
+            val taskChat = ConversationStore(File(operatorRoot, "chats/$taskId.json"))
+            taskChat.append(ChatMessage("user", spec.instruction))
+            taskChat.append(ChatMessage("assistant", answerText, srcs.toList(), followUps))
             withContext(Dispatchers.Main) { refreshIncomplete() }
             stage = "notifying"
             try {

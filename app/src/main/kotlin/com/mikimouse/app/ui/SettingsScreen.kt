@@ -274,6 +274,16 @@ fun SettingsScreen(operatorRoot: File) {
         item {
             GlassCard(Modifier.fillMaxWidth()) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("About this build", style = MaterialTheme.typography.titleMedium)
+                    Text("MikiMouse Operator 0.9.0-mvp (8 early-access builds)", style = MaterialTheme.typography.bodySmall)
+                    Text("200-phase plan: 100+ done. Full log in docs/MASTER-PLAN-200.md.", style = MaterialTheme.typography.bodySmall)
+                    Text("Backup: workspace caches never backed up; outputs + memory survive.", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+        item {
+            GlassCard(Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Connectors (intent-first)", style = MaterialTheme.typography.titleMedium)
                     ConnectorRegistry.all.forEach { c ->
                         val live = remember(c.id) { OperatorIntents.canHandle(ctx, c.deepLink) }
