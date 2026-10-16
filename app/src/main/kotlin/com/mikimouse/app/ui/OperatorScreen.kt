@@ -414,6 +414,31 @@ fun OperatorScreen(operatorRoot: File) {
                 }
             }
             val pdfInputs = imported.filter { it.extension.lowercase() == "pdf" }
+            if ("csv" in lowMsg || "spreadsheet" in lowMsg || "table" in lowMsg || "sheet" in lowMsg) {
+                stage = "building spreadsheet"
+                try {
+                    val rows = mutableListOf<List<String>>()
+                    File(ws.input, "").listFiles()
+                        ?.filter { it.name.startsWith("net-") && it.length() < 2 * 1024 * 1024 }
+                        ?.forEach { f ->
+                            try {
+                                WebFetch.extractTables(f.readBytes()).firstOrNull()?.let { rows += it }
+                            } catch (_: Exception) {}
+                        }
+                    if (rows.isEmpty() && ocrTexts.isNotEmpty()) {
+                        rows += listOf(listOf("source", "text"))
+                        ocrTexts.forEach { (n, t) -> t.split("\n").filter { it.isNotBlank() }.forEach { rows += listOf(n, it.take(200)) } }
+                    }
+                    if (rows.isEmpty()) {
+                        rows += listOf(listOf("item"))
+                        spec.instruction.split("\n").filter { it.isNotBlank() }.forEach { rows += listOf(it.take(200)) }
+                    }
+                    val csv = DocumentPipeline.renderCsv(rows.take(2000), File(ws.output, "data.csv"))
+                    lines += "Spreadsheet: ${rows.size} rows → data.csv (${csv.length()} bytes)"
+                } catch (t: Throwable) {
+                    lines += "Spreadsheet failed: ${t.message?.take(120)}"
+                }
+            }
             if (("rotat" in lowMsg || "flip" in lowMsg || "convert" in lowMsg || "resize" in lowMsg) && images.isNotEmpty()) {
                 stage = "transforming images"
                 val deg = Regex("(\\d{2,3})\\s*deg").find(lowMsg)?.groupValues?.get(1)?.toFloatOrNull()
