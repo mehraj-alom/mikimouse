@@ -11,6 +11,7 @@ import com.mikimouse.app.data.KeystoreKeysFile
 import com.mikimouse.app.data.SettingsStore
 import com.mikimouse.app.intents.OperatorIntents
 import com.mikimouse.app.models.SecureKeyStore
+import com.mikimouse.app.outputs.Schedules
 import com.mikimouse.operator.ConnectorRegistry
 import com.mikimouse.operator.CpuPolicy
 import com.mikimouse.operator.MemoryStore
@@ -175,6 +176,24 @@ fun SettingsScreen(operatorRoot: File) {
                             Text(if (busySkill == "pr-watch") "…" else "Get pr-watch")
                         }
                     }
+                    var teachName by remember { mutableStateOf("") }
+                    var teachTrigger by remember { mutableStateOf("") }
+                    var teachNotes by remember { mutableStateOf("") }
+                    OutlinedTextField(teachName, { teachName = it }, label = { Text("Teach: skill name") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(teachTrigger, { teachTrigger = it }, label = { Text("Teach: when to use it") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(teachNotes, { teachNotes = it }, label = { Text("Teach: notes") }, modifier = Modifier.fillMaxWidth())
+                    Button(onClick = {
+                        scope.launch(Dispatchers.IO) {
+                            try {
+                                skills.teach(teachName, teachTrigger, teachNotes)
+                                teachName = ""; teachTrigger = ""; teachNotes = ""
+                                skillList = skills.list()
+                                msg = "Skill taught ✓"
+                            } catch (t: Throwable) {
+                                msg = "Teach failed: ${t.message?.take(140)}"
+                            }
+                        }
+                    }) { Text("Teach skill") }
                     if (skillList.isEmpty()) Text("No skills installed yet", style = MaterialTheme.typography.bodySmall)
                     skillList.forEach { s ->
                         Row {
@@ -199,6 +218,37 @@ fun SettingsScreen(operatorRoot: File) {
                             }) { Text("Remove") }
                         }
                         Text(s.source, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+        }
+        item {
+            GlassCard(Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Scheduled tasks", style = MaterialTheme.typography.titleMedium)
+                    Text("Runs an instruction on a timer (no inputs). Heavy renders defer under 20% battery.", style = MaterialTheme.typography.bodySmall)
+                    var schedText by remember { mutableStateOf("") }
+                    var schedHours by remember { mutableStateOf(24L) }
+                    OutlinedTextField(schedText, { schedText = it }, label = { Text("Instruction (blank = off)") }, modifier = Modifier.fillMaxWidth())
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(6L, 12L, 24L, 168L).forEach { h ->
+                            Row {
+                                RadioButton(selected = schedHours == h, onClick = { schedHours = h })
+                                TextButton(onClick = { schedHours = h }) { Text(if (h < 24) "${h}h" else if (h == 24L) "daily" else "weekly") }
+                            }
+                        }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = {
+                            if (schedText.isBlank()) {
+                                Schedules.cancel(ctx)
+                                msg = "Schedule off"
+                            } else {
+                                Schedules.set(ctx, schedText, schedHours)
+                                msg = "Scheduled every ${schedHours}h ✓"
+                            }
+                        }) { Text("Save") }
+                        TextButton(onClick = { Schedules.cancel(ctx); msg = "Schedule off" }) { Text("Off") }
                     }
                 }
             }

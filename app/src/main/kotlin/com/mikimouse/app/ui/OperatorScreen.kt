@@ -245,8 +245,15 @@ fun OperatorScreen(operatorRoot: File) {
                 if (images.isNotEmpty()) {
                     val secs = Regex("(\\d{1,3})\\s*-?\\s*second").find(spec.instruction.lowercase())
                         ?.groupValues?.get(1)?.toIntOrNull()?.coerceIn(5, 180) ?: 30
+                    val low = spec.instruction.lowercase()
+                    // Compress presets: smaller bitrate + resolution, still playable.
+                    val (w, h, br) = when {
+                        "tiny" in low || "small" in low -> Triple(640, 360, 1_000_000)
+                        "compress" in low || "compact" in low -> Triple(960, 540, 2_000_000)
+                        else -> Triple(1280, 720, 4_000_000)
+                    }
                     val mp4 = File(ws.output, "final_video.mp4")
-                    val enc = SlideshowEncoder.encode(images, mp4, totalSeconds = secs)
+                    val enc = SlideshowEncoder.encode(images, mp4, width = w, height = h, totalSeconds = secs, bitrate = br)
                     val probe = AndroidMediaRenderer.probe(mp4)
                     lines += "Rendered final_video.mp4: ${mp4.length()} bytes, " +
                         "${enc.frames} frames, probe=${probe?.mime ?: "unreadable"}"

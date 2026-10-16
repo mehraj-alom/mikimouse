@@ -78,6 +78,7 @@ object SlideshowEncoder {
         height: Int = 720,
         fps: Int = 30,
         totalSeconds: Int = 30,
+        bitrate: Int = 4_000_000,
     ): Result {
         require(images.isNotEmpty()) { "no images to encode" }
         out.parentFile?.mkdirs()
@@ -88,7 +89,7 @@ object SlideshowEncoder {
 
         val format = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, width, height).apply {
             setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible)
-            setInteger(MediaFormat.KEY_BIT_RATE, 4_000_000)
+            setInteger(MediaFormat.KEY_BIT_RATE, bitrate)
             setInteger(MediaFormat.KEY_FRAME_RATE, fps)
             setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1)
         }

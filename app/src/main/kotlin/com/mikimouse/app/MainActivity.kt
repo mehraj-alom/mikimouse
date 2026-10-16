@@ -24,9 +24,41 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val root = filesDir.resolve("operator")
+        val prefs = getSharedPreferences("operator_settings", MODE_PRIVATE)
         setContent {
             MaterialTheme(colorScheme = OperatorDark) {
                 var tab by remember { mutableStateOf(0) }
+                var onboard by remember { mutableStateOf(!prefs.getBoolean("onboard_done", false)) }
+                var slide by remember { mutableStateOf(0) }
+                val slides = listOf(
+                    "MikiMouse is a computer inside your phone." to
+                        "Describe the job; it plans, works in an isolated workspace, and hands you the finished file.",
+                    "Your files stay yours." to
+                        "Originals are never touched. Dangerous steps ask first. No accessibility service, banking apps unaffected.",
+                    "Try your first task." to
+                        "Pick files on Home, describe the job, press Run. Outputs live in My outputs — export or share from there.",
+                )
+                if (onboard) {
+                    AlertDialog(
+                        onDismissRequest = {},
+                        title = { Text(slides[slide].first) },
+                        text = { Text(slides[slide].second) },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                if (slide < slides.lastIndex) slide++ else {
+                                    prefs.edit().putBoolean("onboard_done", true).apply()
+                                    onboard = false
+                                }
+                            }) { Text(if (slide < slides.lastIndex) "Next" else "Start") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = {
+                                prefs.edit().putBoolean("onboard_done", true).apply()
+                                onboard = false
+                            }) { Text("Skip") }
+                        },
+                    )
+                }
                 Scaffold(
                     bottomBar = {
                         NavigationBar {
