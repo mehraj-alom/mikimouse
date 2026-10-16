@@ -10,8 +10,18 @@ import java.io.File
 class TaskRepository(private val ctx: Context, private val wm: WorkspaceManager) {
     fun importUris(ws: TaskWorkspace, uris: List<Uri>): List<File> {
         val cr = ctx.contentResolver
-        return uris.mapIndexed { i, uri ->
+        val out = mutableListOf<File>()
+        uris.forEachIndexed { i, uri ->
             val name = queryName(uri) ?: "input-$i"
+            // N08 duplicate detection: same name+size already imported → reuse, never duplicate.
+            val existing = ws.input.listFiles()?.firstOrNull {
+                it.name.endsWith(name.take(80).replace(Regex("[^A-Za-z0-9._-]"), "_")) &&
+                    it.length() == (querySize(uri) ?: -1L)
+            }
+            if (existing != null) {
+                out += existing
+                return@forEachIndexed
+            }
             val safe = "input-$i-" + name.replace(Regex("[^A-Za-z0-9._-]"), "_").take(80)
             val dest = File(ws.input, safe)
             // Streaming copy: 16 KB buffer, never whole file in RAM.
@@ -25,9 +35,19 @@ class TaskRepository(private val ctx: Context, private val wm: WorkspaceManager)
                     }
                 }
             } ?: throw IllegalStateException("cannot open $uri")
-            dest
+            out += dest
         }
+        return out
     }
+
+    private fun querySize(uri: Uri): Long? = try {
+        ctx.contentResolver.query(uri, null, null, null, null)?.use { c ->
+            if (c.moveToFirst()) {
+                val idx = c.getColumnIndex(android.provider.MediaStore.MediaColumns.SIZE)
+                if (idx >= 0) c.getLong(idx) else null
+            } else null
+        }
+    } catch (_: Exception) { null }
 
     private fun queryName(uri: Uri): String? = try {
         ctx.contentResolver.query(uri, arrayOf(MediaStore.MediaColumns.DISPLAY_NAME), null, null, null)?.use { c ->

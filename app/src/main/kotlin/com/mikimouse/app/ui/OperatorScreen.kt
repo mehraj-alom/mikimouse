@@ -221,6 +221,7 @@ fun OperatorScreen(operatorRoot: File, initialInstruction: String = "Create a pr
             val wm = WorkspaceManager(operatorRoot)
             stage = "opening workspace"
             val ws = wm.create(taskId)
+            val before = ws.input.listFiles()?.size ?: 0
             val imported = if (uris != null) {
                 stage = "importing ${uris.size} file(s)"
                 TaskRepository(ctx, wm).importUris(ws, uris)
@@ -228,7 +229,8 @@ fun OperatorScreen(operatorRoot: File, initialInstruction: String = "Create a pr
                 stage = "reusing imported files"
                 wm.listInputs(ws)
             }
-            lines += "Inputs (${imported.size}): " + imported.joinToString { "${it.name} (${it.length()}b)" }
+            val reused = imported.size - ((ws.input.listFiles()?.size ?: 0) - before)
+            lines += "Inputs (${imported.size}, ${reused.coerceAtLeast(0)} reused): " + imported.joinToString { "${it.name} (${it.length()}b)" }
             val budget = settings.budget()
             stage = "configuring model (${settings.providerId})"
             val router = try {
@@ -330,6 +332,10 @@ fun OperatorScreen(operatorRoot: File, initialInstruction: String = "Create a pr
                     Notifications.notify(ctx, taskId.hashCode(), "Render deferred", "Battery ${pct}% — plug in and Resume.")
                     return
                 }
+                val saverOn = try {
+                    (ctx.getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager).isPowerSaveMode
+                } catch (_: Exception) { false }
+                if (saverOn) lines += "Battery saver on: single sequential render, no parallelism."
                 if (images.isNotEmpty()) {
                     val secs = Regex("(\\d{1,3})\\s*-?\\s*second").find(spec.instruction.lowercase())
                         ?.groupValues?.get(1)?.toIntOrNull()?.coerceIn(5, 180) ?: 30
@@ -378,7 +384,7 @@ fun OperatorScreen(operatorRoot: File, initialInstruction: String = "Create a pr
                     val texts = (ocrTexts.values.filter { it.isNotBlank() }.ifEmpty { imported.map { it.name } }) + spec.instruction
                     val slides = DocumentPipeline.outlineFromTexts("Operator Report", texts)
                     AndroidPdfRenderer.renderSlides(
-                        "Operator Report", slides, File(ws.output, "presentation.pdf"),
+                        "Operator Report", slides, File(ws.output, "presentation.pdf"), images,
                     )
                     lines += "PPTX unavailable on-device (no java.awt); rendered real PDF + Markdown instead."
                 } else {

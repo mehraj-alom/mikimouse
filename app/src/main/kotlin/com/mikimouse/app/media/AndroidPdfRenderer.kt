@@ -9,7 +9,7 @@ import com.mikimouse.operator.Slide
 import java.io.File
 
 object AndroidPdfRenderer {
-    fun renderSlides(title: String, slides: List<Slide>, out: File): File {
+    fun renderSlides(title: String, slides: List<Slide>, out: File, images: List<File> = emptyList()): File {
         out.parentFile?.mkdirs()
         val doc = PdfDocument()
         val w = 1280
@@ -22,13 +22,38 @@ object AndroidPdfRenderer {
             val page = doc.startPage(info)
             val c = page.canvas
             c.drawColor(0xFF0B1020.toInt())
-            titlePaint.color = 0xFFFFFFFF.toInt()
-            c.drawText(s.title.take(60), 64f, 120f, titlePaint)
-            bodyPaint.color = 0xFFCBD5E1.toInt()
-            var y = 210f
-            s.bullets.take(6).forEach { b ->
-                c.drawText(("• " + b).take(72), 80f, y, bodyPaint)
-                y += 56f
+            // Slide art: decode the matching input image sampled down (never full-RAM).
+            val art = images.getOrNull(i)?.let { f ->
+                try {
+                    val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                    android.graphics.BitmapFactory.decodeFile(f.absolutePath, bounds)
+                    var sample = 1
+                    while (bounds.outWidth / (sample * 2) >= 560 && bounds.outHeight / (sample * 2) >= 400) sample *= 2
+                    android.graphics.BitmapFactory.decodeFile(f.absolutePath,
+                        android.graphics.BitmapFactory.Options().apply { inSampleSize = sample })
+                } catch (_: Exception) { null }
+            }
+            if (art != null) {
+                val dest = android.graphics.RectF(64f, 150f, 600f, 560f)
+                c.drawBitmap(art, null, dest, null)
+                if (!art.isRecycled) art.recycle()
+                titlePaint.color = 0xFFFFFFFF.toInt()
+                c.drawText(s.title.take(40), 640f, 220f, titlePaint)
+                bodyPaint.color = 0xFFCBD5E1.toInt()
+                var y = 290f
+                s.bullets.take(5).forEach { b ->
+                    c.drawText(("• " + b).take(40), 640f, y, bodyPaint)
+                    y += 56f
+                }
+            } else {
+                titlePaint.color = 0xFFFFFFFF.toInt()
+                c.drawText(s.title.take(60), 64f, 120f, titlePaint)
+                bodyPaint.color = 0xFFCBD5E1.toInt()
+                var y = 210f
+                s.bullets.take(6).forEach { b ->
+                    c.drawText(("• " + b).take(72), 80f, y, bodyPaint)
+                    y += 56f
+                }
             }
             pageNo.color = 0xFF64748B.toInt()
             c.drawText("$title — ${i + 1}/${slides.size}", 64f, (h - 40).toFloat(), pageNo)
