@@ -3,8 +3,8 @@
     <shortcut
         android:shortcutId="new_video"
         android:enabled="true"
-        android:shortcutLongLabel="New video task"
-        android:shortcutShortLabel="Video">
+        android:shortcutLongLabel="@string/shortcut_video_long"
+        android:shortcutShortLabel="@string/shortcut_video_short">
         <intent
             android:action="com.mikimouse.app.ASK"
             android:targetPackage="com.mikimouse.app"
@@ -15,8 +15,8 @@
     <shortcut
         android:shortcutId="new_research"
         android:enabled="true"
-        android:shortcutLongLabel="New research task"
-        android:shortcutShortLabel="Research">
+        android:shortcutLongLabel="@string/shortcut_research_long"
+        android:shortcutShortLabel="@string/shortcut_research_short">
         <intent
             android:action="com.mikimouse.app.ASK"
             android:targetPackage="com.mikimouse.app"

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MikiMouse Operator</string>
+    <string name="shortcut_video_short">Video</string>
+    <string name="shortcut_video_long">New video task</string>
+    <string name="shortcut_research_short">Research</string>
+    <string name="shortcut_research_long">New research task</string>
+</resources>
