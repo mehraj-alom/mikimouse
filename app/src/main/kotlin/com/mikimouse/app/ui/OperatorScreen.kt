@@ -26,6 +26,7 @@ import com.mikimouse.app.media.AndroidPdfRenderer
 import com.mikimouse.app.media.OcrReader
 import com.mikimouse.app.media.SlideshowEncoder
 import com.mikimouse.app.models.SecureKeyStore
+import com.mikimouse.app.outputs.DdgSearch
 import com.mikimouse.app.outputs.Notifications
 import com.mikimouse.operator.*
 import com.mikimouse.operator.ChatMessage
@@ -203,7 +204,18 @@ fun OperatorScreen(operatorRoot: File) {
             if ("download_to_workspace" in p.requiredTools || "web_search" in p.requiredTools) {
                 val urls = Regex("https?://[^\\s\"']+").findAll(spec.instruction).map { it.value }.toList()
                 if (urls.isEmpty()) {
-                    lines += "No URLs in instruction — nothing to download. Add links to fetch."
+                    if ("web_search" in p.requiredTools && budget.network != NetworkPolicy.OFFLINE_ONLY) {
+                        stage = "searching the web (keyless)"
+                        try {
+                            val ans = DdgSearch.ask(spec.instruction.take(300))
+                            lines += "Web answer: ${ans.abstract.take(400)}"
+                            ans.sources.forEach { srcs += it }
+                        } catch (t: Throwable) {
+                            lines += "Web search failed (${t.message?.take(100)}); answer uses on-device knowledge."
+                        }
+                    } else {
+                        lines += "No URLs in instruction — nothing to download. Add links to fetch."
+                    }
                 } else if (budget.network == NetworkPolicy.OFFLINE_ONLY) {
                     lines += "Blocked: offline mode refuses network fetch."
                 } else {
