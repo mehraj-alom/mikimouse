@@ -33,6 +33,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val root = filesDir.resolve("operator")
         val prefs = getSharedPreferences("operator_settings", MODE_PRIVATE)
+        val prefill = intent?.getStringExtra("prefill")
         setContent {
             MaterialTheme(colorScheme = OperatorDark) {
                 var tab by remember { mutableStateOf(0) }
@@ -82,7 +83,7 @@ class MainActivity : ComponentActivity() {
                     Box(Modifier.fillMaxSize().padding(pad)) {
                         GlassBackground()
                         when (tab) {
-                            0 -> OperatorScreen(root)
+                            0 -> OperatorScreen(root, prefill ?: "Create a professional 30-second video from these files.")
                             1 -> OutputsScreen(root)
                             2 -> ResourcesScreen(root)
                             3 -> SettingsScreen(root)

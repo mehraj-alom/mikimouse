@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="new_video"
+        android:enabled="true"
+        android:shortcutLongLabel="New video task"
+        android:shortcutShortLabel="Video">
+        <intent
+            android:action="com.mikimouse.app.ASK"
+            android:targetPackage="com.mikimouse.app"
+            android:targetClass="com.mikimouse.app.MainActivity">
+            <extra android:name="prefill" android:value="Create a professional 30-second video from these files." />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="new_research"
+        android:enabled="true"
+        android:shortcutLongLabel="New research task"
+        android:shortcutShortLabel="Research">
+        <intent
+            android:action="com.mikimouse.app.ASK"
+            android:targetPackage="com.mikimouse.app"
+            android:targetClass="com.mikimouse.app.MainActivity">
+            <extra android:name="prefill" android:value="Research this topic and file a report with sources." />
+        </intent>
+    </shortcut>
+</shortcuts>

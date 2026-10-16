@@ -44,12 +44,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-fun OperatorScreen(operatorRoot: File) {
+fun OperatorScreen(operatorRoot: File, initialInstruction: String = "Create a professional 30-second video from these files.") {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val settings = remember { SettingsStore(ctx) }
     val tasks = remember { TaskManager(operatorRoot) }
-    var instruction by remember { mutableStateOf("Create a professional 30-second video from these files.") }
+    var instruction by remember { mutableStateOf(initialInstruction) }
     var picked by remember { mutableStateOf<List<Uri>>(emptyList()) }
     var log by remember { mutableStateOf<List<String>>(emptyList()) }
     var running by remember { mutableStateOf(false) }
