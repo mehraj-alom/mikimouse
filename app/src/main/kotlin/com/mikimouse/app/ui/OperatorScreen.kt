@@ -20,9 +20,11 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.mikimouse.app.data.SettingsStore
 import com.mikimouse.app.data.TaskRepository
+import com.mikimouse.app.intents.DeviceActions
 import com.mikimouse.app.intents.OperatorIntents
 import com.mikimouse.app.media.AndroidMediaRenderer
 import com.mikimouse.app.media.AndroidPdfRenderer
+import com.mikimouse.app.media.FrameGrabber
 import com.mikimouse.app.media.OcrReader
 import com.mikimouse.app.media.SlideshowEncoder
 import com.mikimouse.app.models.SecureKeyStore

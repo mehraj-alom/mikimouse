@@ -12,7 +12,8 @@ object AndroidPdfRenderer {
     fun renderSlides(title: String, slides: List<Slide>, out: File): File {
         out.parentFile?.mkdirs()
         val doc = PdfDocument()
-        val w = 1280        val h = 720
+        val w = 1280
+        val h = 720
         val titlePaint = Paint().apply { textSize = 54f; typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD) }
         val bodyPaint = Paint().apply { textSize = 30f }
         val pageNo = Paint().apply { textSize = 22f }
