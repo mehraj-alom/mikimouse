@@ -480,6 +480,14 @@ fun OperatorScreen(operatorRoot: File, initialInstruction: String = "Create a pr
                     }
                     val csv = DocumentPipeline.renderCsv(rows.take(2000), File(ws.output, "data.csv"))
                     lines += "Spreadsheet: ${rows.size} rows → data.csv (${csv.length()} bytes)"
+                    if ("xlsx" in lowMsg || "excel" in lowMsg) {
+                        try {
+                            val x = DocumentPipeline.renderXlsx(rows.take(5000), File(ws.output, "data.xlsx"))
+                            lines += "Excel: data.xlsx (${x.length()} bytes)"
+                        } catch (t: Throwable) {
+                            lines += "XLSX unavailable here (${t.message?.take(100)}); CSV kept."
+                        }
+                    }
                 } catch (t: Throwable) {
                     lines += "Spreadsheet failed: ${t.message?.take(120)}"
                 }
@@ -527,6 +535,11 @@ fun OperatorScreen(operatorRoot: File, initialInstruction: String = "Create a pr
             // Conversational answer with sources + follow-ups (chat history persists).
             stage = "answering"
             val done = ws.output.listFiles()?.maxByOrNull { it.length() }
+            val mailTo = Regex("[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}").find(spec.instruction)?.value
+            if (("email" in lowMsg || "mail " in lowMsg) && mailTo != null && done != null) {
+                withContext(Dispatchers.Main) { OperatorIntents.emailFile(ctx, mailTo, "MikiMouse: ${done.name}", done) }
+                lines += "Email draft to $mailTo with ${done.name} (you send)."
+            }
             val answerText = buildString {
                 val outs = ws.output.listFiles()?.joinToString { "${it.name} (${it.length()}b)" } ?: "no files"
                 if (srcs.isNotEmpty()) {
@@ -551,7 +564,7 @@ fun OperatorScreen(operatorRoot: File, initialInstruction: String = "Create a pr
             val taskChat = ConversationStore(File(operatorRoot, "chats/$taskId.json"))
             taskChat.append(ChatMessage("user", spec.instruction))
             taskChat.append(ChatMessage("assistant", answerText, srcs.toList(), followUps))
-            withContext(Dispatchers.Main) { refreshIncomplete() }
+            withContext(Dispatchers.Main) { log = lines; refreshIncomplete() }
             stage = "notifying"
             try {
                 val vib = ctx.getSystemService(android.os.Vibrator::class.java)

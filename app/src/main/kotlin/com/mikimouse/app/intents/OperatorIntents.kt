@@ -19,6 +19,28 @@ object OperatorIntents {
         ctx.startActivity(Intent.createChooser(i, "Share ${file.name}"))
     }
 
+    fun emailFile(ctx: Context, to: String, subject: String, file: File) {
+        try {
+            val uri = FileProvider.getUriForFile(ctx, "com.mikimouse.app.fileprovider", file)
+            val i = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:$to")).apply {
+                putExtra(Intent.EXTRA_SUBJECT, subject)
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            // Prefer a real mail client; fall back to the generic sheet.
+            val pm = ctx.packageManager
+            val target = pm.queryIntentActivities(i, 0).firstOrNull()?.activityInfo
+            if (target != null) {
+                i.setClassName(target.packageName, target.name)
+                ctx.startActivity(i)
+            } else {
+                shareFile(ctx, file)
+            }
+        } catch (_: Exception) {
+            try { shareFile(ctx, file) } catch (_: Exception) {}
+        }
+    }
+
     fun openInApp(ctx: Context, deepLink: String) {
         try {
             val i = Intent(Intent.ACTION_VIEW, Uri.parse(deepLink))

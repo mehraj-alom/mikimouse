@@ -2,6 +2,7 @@ package com.mikimouse.operator
 
 import java.io.File
 import org.apache.poi.xslf.usermodel.XMLSlideShow
+import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import org.apache.poi.xwpf.usermodel.XWPFDocument
 
 data class Slide(val title: String, val bullets: List<String>)
@@ -82,6 +83,19 @@ object DocumentPipeline {
     fun renderCsv(rows: List<List<String>>, out: File): File {
         out.parentFile?.mkdirs()
         out.writeText(rows.joinToString("\n") { r -> r.joinToString(",") { "\"${it.replace("\"", "\"\"")}\"" } })
+        return out
+    }
+
+    fun renderXlsx(rows: List<List<String>>, out: File): File {
+        out.parentFile?.mkdirs()
+        XSSFWorkbook().use { wb ->
+            val sheet = wb.createSheet("data")
+            rows.forEachIndexed { i, r ->
+                val row = sheet.createRow(i)
+                r.forEachIndexed { j, c -> row.createCell(j).setCellValue(c.take(8000)) }
+            }
+            out.outputStream().use { wb.write(it) }
+        }
         return out
     }
 }
