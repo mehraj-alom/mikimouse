@@ -3,5 +3,7 @@ build/
 local.properties
 *.iml
 .DS_Store
-operator/
-tasks/
+# Runtime data dirs at repo root only (anchored: must not match the
+# com.mikimouse.operator package or tasks/ trees inside the source set).
+/operator/
+/tasks/
