@@ -1,0 +1,145 @@
+package com.mikimouse.app.ui
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import com.mikimouse.app.data.KeystoreKeysFile
+import com.mikimouse.app.data.SettingsStore
+import com.mikimouse.app.models.SecureKeyStore
+import com.mikimouse.operator.ConnectorRegistry
+import com.mikimouse.operator.CpuPolicy
+import com.mikimouse.operator.MemoryStore
+import com.mikimouse.operator.NetworkPolicy
+import java.io.File
+
+@Composable
+fun SettingsScreen(operatorRoot: File) {
+    val ctx = LocalContext.current
+    val store = remember { SettingsStore(ctx) }
+    val ks = remember { SecureKeyStore() }
+    val keysDir = remember { File(ctx.filesDir, "keys") }
+    val memFile = remember { File(operatorRoot, "memory/prefs.json") }
+    var msg by remember { mutableStateOf("") }
+
+    var ram by remember { mutableStateOf(store.ramTargetMB) }
+    var quota by remember { mutableStateOf(store.storageQuotaMB) }
+    var cpu by remember { mutableStateOf(store.cpu) }
+    var net by remember { mutableStateOf(store.network) }
+    var provider by remember { mutableStateOf(store.providerId) }
+    var endpoint by remember { mutableStateOf(store.endpoint) }
+    var model by remember { mutableStateOf(store.model) }
+    var apiKey by remember { mutableStateOf("") }
+    var memEnabled by remember { mutableStateOf(store.memoryEnabled) }
+    var memView by remember { mutableStateOf<Map<String, String>?>(null) }
+
+    fun keyAlias() = when (provider) {
+        "openai" -> "OPENAI_API_KEY"
+        "openrouter" -> "OPENROUTER_API_KEY"
+        else -> "CUSTOM_API_KEY"
+    }
+
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item {
+            GlassCard(Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Runtime budget", style = MaterialTheme.typography.titleMedium)
+                    Text("RAM target (never a reservation): $ram MB")
+                    listOf(512, 1024, 2048, 3072, 4096).forEach { v ->
+                        Row {
+                            RadioButton(selected = ram == v, onClick = { ram = v; store.ramTargetMB = v })
+                            TextButton(onClick = { ram = v; store.ramTargetMB = v }) { Text("$v MB${if (v == 2048) " (auto)" else ""}") }
+                        }
+                    }
+                    Text("Storage quota: $quota MB")
+                    listOf(1024, 2048, 5120, 10240, 20480).forEach { v ->
+                        Row {
+                            RadioButton(selected = quota == v, onClick = { quota = v; store.storageQuotaMB = v })
+                            TextButton(onClick = { quota = v; store.storageQuotaMB = v }) { Text("${v / 1024} GB") }
+                        }
+                    }
+                    Text("CPU policy")
+                    CpuPolicy.entries.forEach { c ->
+                        Row {
+                            RadioButton(selected = cpu == c, onClick = { cpu = c; store.cpu = c })
+                            TextButton(onClick = { cpu = c; store.cpu = c }) { Text(c.name) }
+                        }
+                    }
+                    Text("Network")
+                    NetworkPolicy.entries.forEach { n ->
+                        Row {
+                            RadioButton(selected = net == n, onClick = { net = n; store.network = n })
+                            TextButton(onClick = { net = n; store.network = n }) { Text(n.name) }
+                        }
+                    }
+                }
+            }
+        }
+        item {
+            GlassCard(Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Model provider", style = MaterialTheme.typography.titleMedium)
+                    listOf("local", "openai", "openrouter", "custom").forEach { p ->
+                        Row {
+                            RadioButton(selected = provider == p, onClick = { provider = p; store.providerId = p })
+                            TextButton(onClick = { provider = p; store.providerId = p }) { Text(p) }
+                        }
+                    }
+                    OutlinedTextField(endpoint, { endpoint = it; store.endpoint = it }, label = { Text("Endpoint (custom)") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(model, { model = it; store.model = it }, label = { Text("Model") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(apiKey, { apiKey = it }, label = { Text("API key (Keystore, never plaintext prefs)") }, modifier = Modifier.fillMaxWidth())
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = {
+                            try {
+                                KeystoreKeysFile.save(keyAlias(), apiKey, ks, keysDir)
+                                apiKey = ""
+                                msg = "Key saved for ${keyAlias()} ✓"
+                            } catch (t: Throwable) { msg = "Key save failed: ${t.message}" }
+                        }) { Text("Save key") }
+                        TextButton(onClick = {
+                            KeystoreKeysFile.clear(keysDir, keyAlias())
+                            msg = "Key cleared"
+                        }) { Text("Clear") }
+                    }
+                    val has = KeystoreKeysFile.loadFrom(keysDir, keyAlias(), ks) != null
+                    Text(if (has) "Key stored ✓" else "No key stored", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+        item {
+            GlassCard(Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Memory (local only)", style = MaterialTheme.typography.titleMedium)
+                    Row {
+                        Checkbox(checked = memEnabled, onCheckedChange = { memEnabled = it; store.memoryEnabled = it })
+                        Text("Memory enabled")
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(onClick = { memView = MemoryStore(memFile).all() }) { Text("View") }
+                        TextButton(onClick = {
+                            MemoryStore(memFile).deleteAll()
+                            memView = emptyMap()
+                            msg = "Memory deleted"
+                        }) { Text("Delete") }
+                    }
+                    memView?.forEach { (k, v) -> Text("$k: ${v.take(80)}", style = MaterialTheme.typography.bodySmall) }
+                }
+            }
+        }
+        item {
+            GlassCard(Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Connectors (intent-first)", style = MaterialTheme.typography.titleMedium)
+                    ConnectorRegistry.all.forEach { c ->
+                        Text("${if (c.available) "✓" else "✕"} ${c.label}: ${c.note}", style = MaterialTheme.typography.bodySmall)
+                    }
+                    Text("No AccessibilityService. Banking apps untouched.", style = MaterialTheme.typography.bodySmall)
+                    if (msg.isNotBlank()) Text(msg, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+    }
+}
