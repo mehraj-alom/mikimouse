@@ -58,6 +58,7 @@ fun OperatorScreen(operatorRoot: File) {
     var pendingStep by remember { mutableStateOf<PlanStep?>(null) }
     var pendingGate by remember { mutableStateOf<CompletableDeferred<Boolean>?>(null) }
     var incomplete by remember { mutableStateOf<List<PersistedTask>>(emptyList()) }
+    var crashGuard by remember { mutableStateOf(false) }
     var thread by remember { mutableStateOf<List<ChatMessage>>(emptyList()) }
     var lastOutputDir by remember { mutableStateOf<File?>(null) }
     var lastTaskId by remember { mutableStateOf<String?>(null) }
@@ -71,6 +72,9 @@ fun OperatorScreen(operatorRoot: File) {
             it.state == TaskState.PAUSED || it.state == TaskState.FAILED ||
                 it.state == TaskState.WAITING_FOR_USER
         }.sortedByDescending { it.spec.taskId }
+        // Crash-loop guard (K06): 3 consecutive failures → warn instead of silent retry loops.
+        val recent = tasks.listTasks().sortedByDescending { it.spec.taskId }.take(3)
+        crashGuard = recent.size == 3 && recent.all { it.state == TaskState.FAILED }
         thread = chatStore.load().takeLast(20)
     }
 
@@ -419,6 +423,10 @@ fun OperatorScreen(operatorRoot: File) {
             chatStore.append(ChatMessage("assistant", answerText, srcs.toList(), followUps))
             withContext(Dispatchers.Main) { refreshIncomplete() }
             stage = "notifying"
+            try {
+                val vib = ctx.getSystemService(android.os.Vibrator::class.java)
+                vib?.vibrate(android.os.VibrationEffect.createOneShot(50, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
+            } catch (_: Exception) {}
             if (Build.VERSION.SDK_INT < 33 ||
                 ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) ==
                 PackageManager.PERMISSION_GRANTED
@@ -521,6 +529,15 @@ fun OperatorScreen(operatorRoot: File) {
                                 "Ask anything — answers arrive with sources, follow-ups, and your files as real outputs.",
                                 style = MaterialTheme.typography.bodySmall,
                             )
+                            listOf(
+                                "Create a 30-second video from these files",
+                                "Research this topic and file a report",
+                                "Compress this video smaller",
+                            ).forEach { ex ->
+                                TextButton(onClick = { instruction = ex; previewPlan() }) {
+                                    Text("Try: $ex")
+                                }
+                            }
                         }
                         thread.takeLast(6).forEachIndexed { i, m ->
                             val isLast = i == thread.takeLast(6).lastIndex
@@ -629,9 +646,23 @@ fun OperatorScreen(operatorRoot: File) {
                         (log.ifEmpty { listOf("Plan → collect → process → validate → export → clean") }).forEach {
                             Text(it, style = MaterialTheme.typography.bodySmall)
                         }
+                        if (crashGuard) {
+                            Text(
+                                "⚠ 3 consecutive failures — export a debug bundle and check logs before retrying.",
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
                         if (lastTaskId != null) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 TextButton(onClick = { exportDebug(lastTaskId!!) }) { Text("Export debug bundle") }
+                                TextButton(onClick = {
+                                    scope.launch(Dispatchers.IO) {
+                                        val lines = runCatching {
+                                            File(operatorRoot, "tasks/$lastTaskId/logs/audit.log").readLines().takeLast(40)
+                                        }.getOrDefault(listOf("(no audit yet)"))
+                                        withContext(Dispatchers.Main) { log = lines }
+                                    }
+                                }) { Text("View audit") }
                                 TextButton(onClick = {
                                     scope.launch(Dispatchers.IO) {
                                         try {

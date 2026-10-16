@@ -134,6 +134,12 @@ fun SettingsScreen(operatorRoot: File) {
                             KeystoreKeysFile.clear(keysDir, keyAlias())
                             msg = "Key cleared"
                         }) { Text("Clear") }
+                        TextButton(onClick = {
+                            listOf("OPENAI_API_KEY", "OPENROUTER_API_KEY", "CUSTOM_API_KEY").forEach {
+                                KeystoreKeysFile.clear(keysDir, it)
+                            }
+                            msg = "All keys wiped"
+                        }) { Text("Wipe all") }
                     }
                     val has = KeystoreKeysFile.loadFrom(keysDir, keyAlias(), ks) != null
                     Text(if (has) "Key stored ✓" else "No key stored", style = MaterialTheme.typography.bodySmall)
@@ -250,6 +256,18 @@ fun SettingsScreen(operatorRoot: File) {
                         }) { Text("Save") }
                         TextButton(onClick = { Schedules.cancel(ctx); msg = "Schedule off" }) { Text("Off") }
                     }
+                }
+            }
+        }
+        item {
+            GlassCard(Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Privacy — what leaves this phone", style = MaterialTheme.typography.titleMedium)
+                    Text("• Local model / offline: nothing leaves.", style = MaterialTheme.typography.bodySmall)
+                    Text("• Remote model: your prompt + OCR text (PII masked) go to your configured endpoint only. Logged per task.", style = MaterialTheme.typography.bodySmall)
+                    Text("• Web answers: query goes to DuckDuckGo; page fetches go to the sites you asked for.", style = MaterialTheme.typography.bodySmall)
+                    Text("• Skills: fetched once from GitHub raw, then kept on-device.", style = MaterialTheme.typography.bodySmall)
+                    Text("• Never: accessibility capture, banking apps, silent sends.", style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
