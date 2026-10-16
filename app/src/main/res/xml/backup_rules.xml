@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- S02: never back up render caches or temp workspaces; keep outputs, memory, registry. -->
+    <exclude domain="file" path="operator/tasks/" />
+    <include domain="file" path="operator/skills/registry.json" />
+    <include domain="file" path="operator/memory/" />
+    <include domain="file" path="operator/chats/" />
+    <exclude domain="sharedpref" path="." />
+</full-backup-content>

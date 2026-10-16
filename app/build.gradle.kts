@@ -12,8 +12,8 @@ android {
         applicationId = "com.mikimouse.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0-mvp"
+        versionCode = 9
+        versionName = "0.9.0-mvp"
     }
 
     buildTypes {

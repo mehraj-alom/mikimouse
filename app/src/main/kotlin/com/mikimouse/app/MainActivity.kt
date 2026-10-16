@@ -25,6 +25,11 @@ import com.mikimouse.app.ui.SettingsScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        if ((applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+            android.os.StrictMode.setThreadPolicy(
+                android.os.StrictMode.ThreadPolicy.Builder().detectAll().penaltyLog().build(),
+            )
+        }
         super.onCreate(savedInstanceState)
         val root = filesDir.resolve("operator")
         val prefs = getSharedPreferences("operator_settings", MODE_PRIVATE)
