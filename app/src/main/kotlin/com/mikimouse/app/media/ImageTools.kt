@@ -30,8 +30,7 @@ object ImageTools {
         return out
     }
 
-    fun transform(input: File, out: File, rotateDeg: Float = 0f, flip: Boolean = false, format: String = "jpg"): File {
-        val raw = load(input)
+    fun transform(input: File, out: File, rotateDeg: Float = 0f, flip: Boolean = false, format: String = "jpg"): File {        val raw = load(input)
         try {
             var bmp = raw
             if (rotateDeg != 0f) {
@@ -45,6 +44,25 @@ object ImageTools {
                 bmp = f
             }
             save(bmp, out, format)
+            if (bmp !== raw) bmp.recycle()
+            return out
+        } finally {
+            if (!raw.isRecycled) raw.recycle()
+        }
+    }
+
+    fun watermark(input: File, text: String, out: File): File {
+        val raw = load(input)
+        try {
+            val bmp = raw.copy(Bitmap.Config.ARGB_8888, true)
+            val c = android.graphics.Canvas(bmp)
+            val p = android.graphics.Paint().apply {
+                color = 0xB3FFFFFF.toInt()
+                textSize = (bmp.width / 22f).coerceAtLeast(28f)
+                textAlign = android.graphics.Paint.Align.RIGHT
+            }
+            c.drawText(text.take(48), (bmp.width - 24).toFloat(), (bmp.height - 32).toFloat(), p)
+            save(bmp, out, "jpg")
             if (bmp !== raw) bmp.recycle()
             return out
         } finally {

@@ -142,6 +142,20 @@ fun OperatorScreen(operatorRoot: File) {
             }
         }
     }
+    val pickContact = rememberLauncherForActivityResult(ActivityResultContracts.PickContact()) { uri ->
+        if (uri != null) {
+            try {
+                ctx.contentResolver.query(uri, null, null, null, null)?.use { c ->
+                    if (c.moveToFirst()) {
+                        val nameIdx = c.getColumnIndex(android.provider.ContactsContract.Contacts.DISPLAY_NAME)
+                        val name = if (nameIdx >= 0) c.getString(nameIdx) else "contact"
+                        instruction = "Message $name: "
+                        previewPlan()
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+    }
     val exportDoc = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("*/*")) { uri ->
         val dir = lastOutputDir
         val name = exportName
@@ -379,13 +393,24 @@ fun OperatorScreen(operatorRoot: File) {
             val videoInputs = imported.filter {
                 it.extension.lowercase() in setOf("mp4", "mov", "mkv", "3gp")
             }
-            if (("frame" in spec.instruction.lowercase() || "thumbnail" in spec.instruction.lowercase()) && videoInputs.isNotEmpty()) {
-                stage = "extracting frames"
+            if (("frame" in spec.instruction.lowercase() || "thumbnail" in spec.instruction.lowercase()) && videoInputs.isNotEmpty()) {                stage = "extracting frames"
                 try {
                     val frames = FrameGrabber.extract(videoInputs.first(), File(ws.output, "frames"))
                     lines += "Frames: ${frames.size} saved (${frames.sumOf { it.length() }} bytes)"
                 } catch (t: Throwable) {
                     lines += "Frame extract failed: ${t.message?.take(120)}"
+                }
+            }
+            if (("watermark" in lowAll || "copyright" in lowAll) && images.isNotEmpty()) {
+                stage = "watermarking"
+                val mark = Regex("(?:watermark|copyright)\\s+(?:as\\s+|[:=]\\s*)?(.{1,48})").find(lowAll)?.groupValues?.get(1)?.trim().ifBlank { "MikiMouse" }
+                images.forEach { img ->
+                    try {
+                        ImageTools.watermark(img, mark, File(ws.output, "${img.nameWithoutExtension}-wm.jpg"))
+                        lines += "Watermarked ${img.name}"
+                    } catch (t: Throwable) {
+                        lines += "Watermark failed for ${img.name}: ${t.message?.take(100)}"
+                    }
                 }
             }
             val pdfInputs = imported.filter { it.extension.lowercase() == "pdf" }
@@ -412,6 +437,16 @@ fun OperatorScreen(operatorRoot: File) {
                     lines += "Merged PDF: ${merged.length()} bytes"
                 } catch (t: Throwable) {
                     lines += "PDF merge failed: ${t.message?.take(120)}"
+                }
+            }
+            if ("docx" in lowAll && ocrTexts.isNotEmpty()) {
+                stage = "writing DOCX from OCR text"
+                try {
+                    val paras = ocrTexts.flatMap { (name, text) -> listOf("— $name —") + text.split("\n").filter { it.isNotBlank() } }
+                    DocumentPipeline.renderDocx("OCR Report", paras, File(ws.output, "report.docx"))
+                    lines += "DOCX written from OCR text (${paras.size} paragraphs)"
+                } catch (t: Throwable) {
+                    lines += "DOCX unavailable on-device (${t.message?.take(100)}); Markdown kept instead."
                 }
             }
             withContext(Dispatchers.Main) {
@@ -524,6 +559,7 @@ fun OperatorScreen(operatorRoot: File) {
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(onClick = { pickFiles.launch(arrayOf("*/*")) }) { Text("Pick files (${picked.size})") }
+                            TextButton(onClick = { pickContact.launch() }) { Text("👤") }
                             Button(onClick = {
                                 try {
                                     val i = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
