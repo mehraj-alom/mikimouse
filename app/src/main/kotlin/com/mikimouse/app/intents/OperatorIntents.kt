@@ -62,6 +62,73 @@ object OperatorIntents {
         } catch (_: Exception) {}
     }
 
+    fun adjustVolume(ctx: Context, direction: String): String {
+        return try {
+            val am = ctx.getSystemService(android.media.AudioManager::class.java) ?: return "no audio service"
+            when {
+                "max" in direction || "up" in direction ->
+                    am.adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC,
+                        android.media.AudioManager.ADJUST_RAISE, android.media.AudioManager.FLAG_SHOW_UI)
+                "down" in direction || "min" in direction || "mute" in direction ->
+                    am.adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC,
+                        if ("mute" in direction) android.media.AudioManager.ADJUST_MUTE
+                        else android.media.AudioManager.ADJUST_LOWER, android.media.AudioManager.FLAG_SHOW_UI)
+                else -> return "say volume up, down, max or mute"
+            }
+            "Volume adjusted"
+        } catch (t: Throwable) {
+            "Volume failed: ${t.message?.take(100)}"
+        }
+    }
+
+    fun openDisplaySettings(ctx: Context) {
+        try {
+            val i = Intent(android.provider.Settings.ACTION_DISPLAY_SETTINGS)
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            ctx.startActivity(i)
+        } catch (_: Exception) {}
+    }
+
+    fun printPdf(ctx: Context, file: File) {
+        try {
+            val pm = ctx.getSystemService(android.print.PrintManager::class.java) ?: return
+            val adapter = object : android.print.PrintDocumentAdapter() {
+                override fun onLayout(
+                    old: android.print.PrintAttributes?, new: android.print.PrintAttributes?,
+                    cancel: android.os.CancellationSignal?,
+                    result: LayoutResultCallback?, extras: android.os.Bundle?,
+                ) {
+                    if (cancel?.isCanceled == true) {
+                        result?.onLayoutCancelled()
+                        return
+                    }
+                    val info = android.print.PrintDocumentInfo.Builder(file.name)
+                        .setContentType(android.print.PrintDocumentInfo.CONTENT_TYPE_DOCUMENT)
+                        .setPageCount(android.print.PrintDocumentInfo.PAGE_COUNT_UNKNOWN)
+                        .build()
+                    result?.onLayoutFinished(info, new == null || old == new)
+                }
+
+                override fun onWrite(
+                    pages: Array<out android.print.PageRange>?,
+                    fd: android.os.ParcelFileDescriptor?,
+                    cancel: android.os.CancellationSignal?,
+                    result: WriteResultCallback?,
+                ) {
+                    try {
+                        file.inputStream().use { ins ->
+                            android.os.ParcelFileDescriptor.AutoCloseOutputStream(fd).use { ins.copyTo(it) }
+                        }
+                        result?.onWriteFinished(arrayOf(android.print.PageRange.ALL_PAGES))
+                    } catch (t: Throwable) {
+                        result?.onWriteFailed(t.message)
+                    }
+                }
+            }
+            pm.print(file.name, adapter, null)
+        } catch (_: Exception) {}
+    }
+
     fun canHandle(ctx: Context, deepLink: String): Boolean {
         val i = Intent(Intent.ACTION_VIEW, Uri.parse(deepLink))
         return ctx.packageManager.resolveActivity(i, 0) != null

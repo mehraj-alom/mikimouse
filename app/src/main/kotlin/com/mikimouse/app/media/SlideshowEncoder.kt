@@ -79,6 +79,7 @@ object SlideshowEncoder {
         fps: Int = 30,
         totalSeconds: Int = 30,
         bitrate: Int = 4_000_000,
+        cues: List<com.mikimouse.operator.Cue> = emptyList(),
     ): Result {
         require(images.isNotEmpty()) { "no images to encode" }
         out.parentFile?.mkdirs()
@@ -106,8 +107,16 @@ object SlideshowEncoder {
             val s = Session(codec, muxer)
             var frameIndex = 0
             var usedImages = 0
-            images.forEach { img ->
-                val bmp = decodeCover(img, width, height) ?: return@forEach
+            val sliceMs = (totalSeconds * 1000L / images.size.coerceAtLeast(1))
+            images.forEachIndexed { imgIdx, img ->
+                val bmp0 = decodeCover(img, width, height) ?: return@forEachIndexed
+                // Burn in captions whose time falls in this image's slice.
+                val sliceStart = imgIdx * sliceMs
+                val sliceEnd = sliceStart + sliceMs
+                val cap = cues
+                    .filter { it.startMs < sliceEnd && it.endMs > sliceStart }
+                    .joinToString(" / ") { it.text.replace("\n", " ") }.take(140)
+                val bmp = if (cap.isNotBlank()) drawCaption(bmp0, cap, width, height) else bmp0
                 val yuv = bitmapToNv12(bmp, width, height)
                 bmp.recycle()
                 usedImages++
@@ -154,6 +163,23 @@ object SlideshowEncoder {
         if (cropped !== scaled) cropped.recycle()
         if (raw !== cropped) raw.recycle()
         return scaled
+    }
+
+    private fun drawCaption(bmp: Bitmap, text: String, w: Int, h: Int): Bitmap {
+        val out = bmp.copy(Bitmap.Config.ARGB_8888, true)
+        val c = android.graphics.Canvas(out)
+        val paint = android.graphics.Paint().apply {
+            color = 0xCC000000.toInt()
+        }
+        c.drawRect(0f, (h - 130).toFloat(), w.toFloat(), h.toFloat(), paint)
+        val tp = android.graphics.Paint().apply {
+            color = 0xFFFFFFFF.toInt()
+            textSize = 44f
+            textAlign = android.graphics.Paint.Align.CENTER
+        }
+        c.drawText(text.take(60), w / 2f, (h - 48).toFloat(), tp)
+        if (out !== bmp) bmp.recycle()
+        return out
     }
 
     private fun bitmapToNv12(bmp: Bitmap, w: Int, h: Int): ByteArray {

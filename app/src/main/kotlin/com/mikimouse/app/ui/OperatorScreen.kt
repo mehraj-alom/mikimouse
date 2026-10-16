@@ -59,6 +59,7 @@ fun OperatorScreen(operatorRoot: File) {
     var pendingGate by remember { mutableStateOf<CompletableDeferred<Boolean>?>(null) }
     var incomplete by remember { mutableStateOf<List<PersistedTask>>(emptyList()) }
     var crashGuard by remember { mutableStateOf(false) }
+    var queue by remember { mutableStateOf<List<Pair<String, List<Uri>>>>(emptyList()) }
     var thread by remember { mutableStateOf<List<ChatMessage>>(emptyList()) }
     var lastOutputDir by remember { mutableStateOf<File?>(null) }
     var lastTaskId by remember { mutableStateOf<String?>(null) }
@@ -295,7 +296,14 @@ fun OperatorScreen(operatorRoot: File) {
                         else -> Triple(1280, 720, 4_000_000)
                     }
                     val mp4 = File(ws.output, "final_video.mp4")
-                    val enc = SlideshowEncoder.encode(images, mp4, width = w, height = h, totalSeconds = secs, bitrate = br)
+                    val srtInputs = imported.filter { it.extension.lowercase() == "srt" }
+                    val cues = srtInputs.flatMap {
+                        runCatching { SrtParser.parse(it) }.getOrDefault(emptyList())
+                    }
+                    if (srtInputs.isNotEmpty()) {
+                        lines += "Subtitles: ${cues.size} cue(s) from ${srtInputs.map { it.name }} (burned per time slice)"
+                    }
+                    val enc = SlideshowEncoder.encode(images, mp4, width = w, height = h, totalSeconds = secs, bitrate = br, cues = cues)
                     val probe = AndroidMediaRenderer.probe(mp4)
                     lines += "Rendered final_video.mp4: ${mp4.length()} bytes, " +
                         "${enc.frames} frames, probe=${probe?.mime ?: "unreadable"}"
@@ -358,6 +366,15 @@ fun OperatorScreen(operatorRoot: File) {
                 stage = "alarm"
                 withContext(Dispatchers.Main) { OperatorIntents.setAlarm(ctx, spec.instruction.take(120)) }
                 lines += "Alarm screen opened (you confirm the time)."
+            }
+            if (("volume" in lowMsg || "mute" in lowMsg) && "video" !in lowMsg) {
+                stage = "volume"
+                lines += withContext(Dispatchers.Main) { OperatorIntents.adjustVolume(ctx, lowMsg) }
+            }
+            if ("brightness" in lowMsg) {
+                stage = "display"
+                withContext(Dispatchers.Main) { OperatorIntents.openDisplaySettings(ctx) }
+                lines += "Display settings opened (brightness needs a system setting — change it there)."
             }
             val videoInputs = imported.filter {
                 it.extension.lowercase() in setOf("mp4", "mov", "mkv", "3gp")
@@ -457,7 +474,18 @@ fun OperatorScreen(operatorRoot: File) {
             try {
                 execute(id, TaskSpec(id, instruction), picked)
             } finally {
-                withContext(Dispatchers.Main) { running = false }
+                withContext(Dispatchers.Main) {
+                    running = false
+                    // Batch queue (C16): run queued jobs sequentially, one at a time.
+                    val next = queue.firstOrNull()
+                    if (next != null) {
+                        queue = queue.drop(1)
+                        instruction = next.first
+                        picked = next.second
+                        previewPlan()
+                        startFresh()
+                    }
+                }
             }
         }
     }
@@ -495,8 +523,7 @@ fun OperatorScreen(operatorRoot: File) {
                             modifier = Modifier.fillMaxWidth(), minLines = 2,
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = { pickFiles.launch(arrayOf("*/*")) }) { Text("Pick files (${picked.size})") }
-                            Button(onClick = {
+                            Button(onClick = { pickFiles.launch(arrayOf("*/*")) }) { Text("Pick files (${picked.size})") }                            Button(onClick = {
                                 try {
                                     val i = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                                         putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
@@ -510,6 +537,9 @@ fun OperatorScreen(operatorRoot: File) {
                             Button(enabled = !running && picked.isNotEmpty(), onClick = ::startFresh) {
                                 Text(if (running) "Working…" else "Run")
                             }
+                            TextButton(enabled = picked.isNotEmpty(), onClick = {
+                                queue = queue + (instruction to picked)
+                            }) { Text("Queue (${queue.size})") }
                         }
                     }
                 }
