@@ -28,6 +28,7 @@ import com.mikimouse.app.media.FrameGrabber
 import com.mikimouse.app.media.ImageTools
 import com.mikimouse.app.media.OcrReader
 import com.mikimouse.app.media.SlideshowEncoder
+import com.mikimouse.app.media.VideoTrim
 import com.mikimouse.app.models.SecureKeyStore
 import com.mikimouse.app.outputs.DdgSearch
 import com.mikimouse.app.outputs.Notifications
@@ -169,6 +170,12 @@ fun OperatorScreen(operatorRoot: File, initialInstruction: String = "Create a pr
                 previewPlan()
             }
         }
+    }
+    val contactPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        val uri = pendingContactUri
+        pendingContactUri = null
+        if (granted && uri != null) fillContact(uri)
+        else log = log + "Contacts permission needed to read the number"
     }
     val pickContact = rememberLauncherForActivityResult(ActivityResultContracts.PickContact()) { uri ->
         if (uri != null) {
