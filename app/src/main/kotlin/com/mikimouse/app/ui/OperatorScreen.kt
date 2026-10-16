@@ -218,7 +218,7 @@ fun OperatorScreen(operatorRoot: File) {
                     if ("web_search" in p.requiredTools && budget.network != NetworkPolicy.OFFLINE_ONLY) {
                         stage = "searching the web (keyless, cached 24h)"
                         try {
-                            val ans = DdgSearch.askCached(spec.instruction.take(300), File(ws.cache))
+                            val ans = DdgSearch.askCached(spec.instruction.take(300), ws.cache)
                             lines += "Web answer: ${ans.abstract.take(400)}"
                             ans.sources.forEach { srcs += it }
                         } catch (t: Throwable) {
