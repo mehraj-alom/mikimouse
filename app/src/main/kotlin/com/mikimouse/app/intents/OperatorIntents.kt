@@ -208,4 +208,30 @@ object OperatorIntents {
             ctx.startActivity(i)
         } catch (_: Exception) {}
     }
+
+    fun readCalendarEvents(ctx: Context): List<String> {
+        val events = mutableListOf<String>()
+        try {
+            val resolver = ctx.contentResolver
+            val uri = CalendarContract.Events.CONTENT_URI
+            val projection = arrayOf(
+                CalendarContract.Events.TITLE,
+                CalendarContract.Events.DESCRIPTION,
+                CalendarContract.Events.DTSTART
+            )
+            val now = System.currentTimeMillis()
+            val selection = "${CalendarContract.Events.DTSTART} >= ?"
+            val selectionArgs = arrayOf(now.toString())
+            val sortOrder = "${CalendarContract.Events.DTSTART} ASC"
+            resolver.query(uri, projection, selection, selectionArgs, sortOrder)?.use { cursor ->
+                while (cursor.moveToNext()) {
+                    val title = cursor.getString(cursor.getColumnIndexOrThrow(CalendarContract.Events.TITLE))
+                    val desc = cursor.getString(cursor.getColumnIndexOrThrow(CalendarContract.Events.DESCRIPTION))
+                    val start = cursor.getLong(cursor.getColumnIndexOrThrow(CalendarContract.Events.DTSTART))
+                    events.add("$title${if (desc != null && desc.isNotEmpty()) " - $desc" else ""} (${java.text.SimpleDateFormat("MMM dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date(start))})")
+                }
+            }
+        } catch (_: Exception) {}
+        return events
+    }
 }

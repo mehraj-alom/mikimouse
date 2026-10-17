@@ -426,6 +426,19 @@ fun OperatorScreen(operatorRoot: File, initialInstruction: String = "Create a pr
                 withContext(Dispatchers.Main) { OperatorIntents.openDisplaySettings(ctx) }
                 lines += "Display settings opened (brightness needs a system setting — change it there)."
             }
+            if ("calendar" in lowMsg || "calendar events" in lowMsg || "my schedule" in lowMsg) {
+                stage = "reading calendar"
+                try {
+                    val events = OperatorIntents.readCalendarEvents(ctx)
+                    if (events.isEmpty()) {
+                        lines += "Calendar: no upcoming events found."
+                    } else {
+                        lines += "Calendar events: ${events.joinToString(" | ")}"
+                    }
+                } catch (t: Throwable) {
+                    lines += "Calendar read failed: ${t.message?.take(120)}"
+                }
+            }
             if ("print" in lowMsg) {
                 stage = "print"
                 val printable = ws.output.listFiles()?.firstOrNull {
