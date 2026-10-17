@@ -43,6 +43,9 @@ class SettingsStore(private val ctx: Context) {
     var memoryEnabled: Boolean
         get() = prefs.getBoolean("memory_enabled", true)
         set(v) { prefs.edit().putBoolean("memory_enabled", v).apply() }
+    var telegramBotToken: String
+        get() = prefs.getString("telegram_bot_token", "") ?: ""
+        set(v) { prefs.edit().putString("telegram_bot_token", v).apply() }
 
     fun budget() = ResourceBudget(ramTargetMB, storageQuotaMB, cpu, network)
 

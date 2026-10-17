@@ -557,6 +557,27 @@ fun OperatorScreen(operatorRoot: File, initialInstruction: String = "Create a pr
                 withContext(Dispatchers.Main) { OperatorIntents.emailFile(ctx, mailTo, "MikiMouse: ${done.name}", done) }
                 lines += "Email draft to $mailTo with ${done.name} (you send)."
             }
+            if (("whatsapp" in lowMsg || "wa " in lowMsg) && phone != null) {
+                withContext(Dispatchers.Main) { OperatorIntents.whatsAppSend(ctx, phone.replace(Regex("[\\s-]"), ""), spec.instruction.take(500)) }
+                lines += "WhatsApp draft to $phone (you send)."
+            }
+            if ("telegram" in lowMsg && phone != null) {
+                withContext(Dispatchers.Main) { OperatorIntents.telegramSend(ctx, settings.telegramBotToken ?: "", phone, spec.instruction.take(500)) }
+                lines += "Telegram draft to $phone (you send)."
+            }
+            if (("browser" in lowMsg || "open url" in lowMsg || "open website" in lowMsg)) {
+                val urlMatch = Regex("https?://[^\\s\"']+").find(spec.instruction)?.value
+                if (urlMatch != null) {
+                    withContext(Dispatchers.Main) { OperatorIntents.browserOpen(ctx, urlMatch) }
+                    lines += "Browser opened: $urlMatch"
+                } else {
+                    lines += "Browser requested but no URL found in instruction."
+                }
+            }
+            if (("sms" in lowMsg || "text message" in lowMsg) && phone != null) {
+                withContext(Dispatchers.Main) { OperatorIntents.smsDraft(ctx, phone.replace(Regex("[\\s-]"), ""), spec.instruction.take(500)) }
+                lines += "SMS draft to $phone (you send)."
+            }
             val answerText = buildString {
                 val outs = ws.output.listFiles()?.joinToString { "${it.name} (${it.length()}b)" } ?: "no files"
                 if (srcs.isNotEmpty()) {

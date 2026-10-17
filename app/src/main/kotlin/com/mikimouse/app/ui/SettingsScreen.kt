@@ -154,6 +154,7 @@ fun SettingsScreen(operatorRoot: File) {
                     }
                     val has = KeystoreKeysFile.loadFrom(keysDir, keyAlias(), ks) != null
                     Text(if (has) "Key stored ✓" else "No key stored", style = MaterialTheme.typography.bodySmall)
+                    OutlinedTextField(store.telegramBotToken, { store.telegramBotToken = it }, label = { Text("Telegram Bot Token (optional)") }, modifier = Modifier.fillMaxWidth())
                 }
             }
         }
