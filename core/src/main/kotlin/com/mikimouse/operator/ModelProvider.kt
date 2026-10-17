@@ -1,5 +1,7 @@
 package com.mikimouse.operator
 
+import java.io.File
+
 interface KeyProvider {
     fun apiKey(alias: String): String?
 }
@@ -13,6 +15,7 @@ data class ChatRequest(
     val user: String,
     val maxTokens: Int = 1024,
     val temperature: Double = 0.2,
+    val images: List<File> = emptyList(),
 )
 
 interface ModelProvider {
@@ -64,7 +67,16 @@ class OpenAICompatibleProvider(
 
     private fun buildJson(model: String, req: ChatRequest): String {
         fun esc(s: String) = s.replace("\\", "\\\\").replace("\"", "\\\"").take(8000)
-        return """{"model":"${esc(model)}","max_tokens":${req.maxTokens},"temperature":${req.temperature},"messages":[{"role":"system","content":"${esc(req.system)}"},{"role":"user","content":"${esc(req.user)}"}]}"""
+        val msgs = mutableListOf<String>()
+        msgs.add("""{"role":"system","content":"${esc(req.system)}"}""")
+        val userParts = mutableListOf<String>()
+        userParts.add("""{"type":"text","text":"${esc(req.user)}"}""")
+        req.images.forEach { img ->
+            val b64 = img.readBytes().joinToString("") { "%02x".format(it) }
+            userParts.add("""{"type":"image_url","image_url":{"url":"data:image/png;base64,${b64.take(200000)}"}}""")
+        }
+        msgs.add("""{"role":"user","content":[${userParts.joinToString(",")}]}""")
+        return """{"model":"${esc(model)}","max_tokens":${req.maxTokens},"temperature":${req.temperature},"messages":[${msgs.joinToString(",")}]}"""
     }
 }
 

@@ -33,6 +33,32 @@ class BenchmarkSuiteTest {
         // 10: offline
         val off = planFor("Perform the task completely offline using the local model.")
         assertTrue(off.steps.isNotEmpty())
+        // 11: trim video
+        assertTrue(planFor("Trim the first 10 seconds of this video.").requiredTools.contains("video_trim"))
+        // 12: resize images
+        assertTrue(planFor("Resize these images to 1280x720.").requiredTools.contains("image_resize"))
+        // 13: convert image format
+        assertTrue(planFor("Convert these images to PNG.").requiredTools.contains("image_convert"))
+        // 14: trim audio
+        assertTrue(planFor("Trim the beginning of this audio track.").requiredTools.contains("audio_trim"))
+        // 15: mix audio
+        assertTrue(planFor("Mix these two audio tracks together.").requiredTools.contains("audio_mix"))
+        // 16: merge PDFs
+        assertTrue(planFor("Merge these three PDFs into one.").requiredTools.contains("merge_pdf"))
+        // 17: split PDF
+        assertTrue(planFor("Split this PDF by pages.").requiredTools.contains("split_pdf"))
+        // 18: text to speech
+        assertTrue(planFor("Convert this text to speech.").requiredTools.contains("text_to_speech"))
+        // 19: speech to text
+        assertTrue(planFor("Transcribe this audio to text.").requiredTools.contains("speech_to_text"))
+        // 20: email
+        assertTrue(planFor("Email this file to john@example.com.").requiredTools.contains("email_send"))
+        // 21: SMS
+        assertTrue(planFor("Send an SMS to +15551234567.").requiredTools.contains("sms_send"))
+        // 22: zip/archive
+        assertTrue(planFor("Zip these files into an archive.").requiredTools.contains("archive"))
+        // 23: browser
+        assertTrue(planFor("Open this website in the browser.").requiredTools.contains("browser_open"))
     }
 
     @Test fun benchmark1EndToEnd() = runTest {

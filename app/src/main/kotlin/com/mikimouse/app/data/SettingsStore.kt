@@ -49,11 +49,26 @@ class SettingsStore(private val ctx: Context) {
     fun keyAliasFor(id: String = providerId): String = when (id) {
         "openai" -> "OPENAI_API_KEY"
         "openrouter" -> "OPENROUTER_API_KEY"
+        "vlm-openai" -> "OPENAI_API_KEY"
+        "vlm-openrouter" -> "OPENROUTER_API_KEY"
+        "vlm-custom" -> "CUSTOM_API_KEY"
         else -> "CUSTOM_API_KEY"
     }
 
     fun modelStatus(keystore: SecureKeyStore): String = when (providerId) {
         "local" -> "local stub (offline)"
+        "vlm-openai" -> {
+            val has = KeystoreKeysFile.loadFrom(keysDir, keyAliasFor(), keystore) != null
+            "vlm-openai · ${model.ifBlank { "gpt-4o" }} · ${if (has) "key ✓" else "no key — local stub until saved"}"
+        }
+        "vlm-openrouter" -> {
+            val has = KeystoreKeysFile.loadFrom(keysDir, keyAliasFor(), keystore) != null
+            "vlm-openrouter · ${model.ifBlank { "openrouter/auto" }} · ${if (has) "key ✓" else "no key — local stub until saved"}"
+        }
+        "vlm-custom" -> {
+            val has = KeystoreKeysFile.loadFrom(keysDir, keyAliasFor(), keystore) != null
+            "vlm-custom · ${model.ifBlank { "default vlm" }} · ${if (has) "key ✓" else "no key — local stub until saved"}"
+        }
         else -> {
             val has = KeystoreKeysFile.loadFrom(keysDir, keyAliasFor(), keystore) != null
             "$providerId · ${model.ifBlank { "default model" }} · " +
@@ -69,6 +84,12 @@ class SettingsStore(private val ctx: Context) {
             "custom" -> CustomAPIProvider(
                 endpoint.ifBlank { throw IllegalStateException("custom endpoint empty") },
                 model.ifBlank { "default" }, keys,
+            )
+            "vlm-openai" -> OpenAICompatibleProvider(model = model.ifBlank { "gpt-4o" }, keys = keys)
+            "vlm-openrouter" -> OpenRouterProvider(model = model.ifBlank { "openrouter/auto" }, keys = keys)
+            "vlm-custom" -> CustomAPIProvider(
+                endpoint.ifBlank { throw IllegalStateException("custom endpoint empty") },
+                model.ifBlank { "default vlm" }, keys,
             )
             else -> LocalStubProvider()
         }

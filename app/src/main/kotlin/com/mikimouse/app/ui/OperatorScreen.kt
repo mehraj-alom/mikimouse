@@ -240,7 +240,7 @@ fun OperatorScreen(operatorRoot: File, initialInstruction: String = "Create a pr
                 ModelRouter()
             }
             lines += "Model: ${settings.modelStatus(SecureKeyStore())}"
-            val rt = OperatorRuntime(operatorRoot, resources = ResourceManager(budget), models = router)
+            val rt = OperatorRuntime(operatorRoot, resources = ResourceManager(budget), models = router, vlmImages = emptyList())
             val p = Planner().plan(spec.copy(budget = budget))
             withContext(Dispatchers.Main) { plan = p }
             lines += "Skills needed: ${p.requiredSkills.ifEmpty { listOf("none") }.joinToString()}"
@@ -249,6 +249,8 @@ fun OperatorScreen(operatorRoot: File, initialInstruction: String = "Create a pr
             val imagesEarly = imported.filter {
                 it.extension.lowercase() in setOf("jpg", "jpeg", "png", "webp")
             }
+            val images = imagesEarly
+            val vlmImages = if (settings.providerId.startsWith("vlm")) images else emptyList()
             if ("ocr_image" in p.requiredTools && imagesEarly.isNotEmpty()) {
                 stage = "reading text from images"
                 val raw = OcrReader.readAll(imagesEarly)
@@ -313,9 +315,6 @@ fun OperatorScreen(operatorRoot: File, initialInstruction: String = "Create a pr
             lines += "Task ${res.state}: ${res.summary}"
             val wantVideo = "video" in spec.instruction.lowercase() || "mp4" in spec.instruction.lowercase()
             val wantPres = listOf("presentation", "pptx", "slide").any { it in spec.instruction.lowercase() }
-            val images = imported.filter {
-                it.extension.lowercase() in setOf("jpg", "jpeg", "png", "webp")
-            }
             if (wantVideo) {
                 stage = "rendering video"
                 // Battery-aware deferral (K04): heavy renders pause under 20% instead of dying mid-encode.

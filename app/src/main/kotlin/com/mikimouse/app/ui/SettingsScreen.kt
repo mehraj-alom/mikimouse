@@ -113,14 +113,25 @@ fun SettingsScreen(operatorRoot: File) {
             GlassCard(Modifier.fillMaxWidth()) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Model provider", style = MaterialTheme.typography.titleMedium)
-                    listOf("local", "openai", "openrouter", "custom").forEach { p ->
+                    listOf("local", "openai", "openrouter", "custom", "vlm-openai", "vlm-openrouter", "vlm-custom").forEach { p ->
                         Row {
                             RadioButton(selected = provider == p, onClick = { provider = p; store.providerId = p })
-                            TextButton(onClick = { provider = p; store.providerId = p }) { Text(p) }
+                            TextButton(onClick = { provider = p; store.providerId = p }) {
+                                Text(when (p) {
+                                    "local" -> "Local (offline, private)"
+                                    "openai" -> "OpenAI (text)"
+                                    "openrouter" -> "OpenRouter (text)"
+                                    "vlm-openai" -> "OpenAI GPT-4V (vision)"
+                                    "vlm-openrouter" -> "OpenRouter VLM (vision)"
+                                    "vlm-custom" -> "Custom VLM (vision)"
+                                    "custom" -> "Custom API"
+                                    else -> p
+                                })
+                            }
                         }
                     }
                     OutlinedTextField(endpoint, { endpoint = it; store.endpoint = it }, label = { Text("Endpoint (custom)") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(model, { model = it; store.model = it }, label = { Text("Model") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(model, { model = it; store.model = it }, label = { Text("Model (e.g. gpt-4o, claude-3-opus, gemini-pro-vision)") }, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(apiKey, { apiKey = it }, label = { Text("API key (Keystore, never plaintext prefs)") }, modifier = Modifier.fillMaxWidth())
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = {
