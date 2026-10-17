@@ -228,6 +228,19 @@ class OperatorRuntime(
                     null
                 }
             }
+            "browser_open" -> {
+                val urls = inputs.filter { f -> f.name.endsWith(".url") || f.name.endsWith(".txt") }
+                if (urls.isEmpty()) {
+                    audit.append("browser-no-url", step.id)
+                    null
+                } else {
+                    urls.forEach { f ->
+                        val url = f.readText().take(500)
+                        audit.append("browser-open", url)
+                    }
+                    null // real browser open happens in app layer; core records intent.
+                }
+            }
             "video_trim" -> {
                 val videos = inputs.filter { it.extension.lowercase() in setOf("mp4", "mov", "mkv", "3gp") }
                 if (videos.isEmpty()) {
@@ -314,6 +327,36 @@ class OperatorRuntime(
                     null
                 } else {
                     audit.append("tts", "${txt.size} text file(s) converted")
+                    null
+                }
+            }
+            "email_send" -> {
+                val txtFiles = inputs.filter { it.extension.lowercase() == "txt" }
+                val emails = mutableListOf<String>()
+                txtFiles.forEach { f ->
+                    val content = f.readText()
+                    val emailRegex = Regex("[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}")
+                    val found = emailRegex.findAll(content).map { it.value }.toList()
+                    emails.addAll(found)
+                }
+                if (emails.isEmpty()) {
+                    audit.append("email-no-recipient", step.id)
+                    null
+                } else {
+                    audit.append("email", "draft to ${emails.joinToString(",")}")
+                    null
+                }
+            }
+            "sms_send" -> {
+                val smsNum = inputs.flatMap { f ->
+                    val content = f.readText()
+                    Regex("\\+?\\d[\\d\\s-]{7,}\\d").findAll(content).map { it.value }
+                }.distinct()
+                if (smsNum.isEmpty()) {
+                    audit.append("sms-no-number", step.id)
+                    null
+                } else {
+                    audit.append("sms", "draft to ${smsNum.joinToString(",")}")
                     null
                 }
             }

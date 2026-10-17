@@ -155,4 +155,57 @@ object OperatorIntents {
         val i = Intent(Intent.ACTION_VIEW, Uri.parse(deepLink))
         return ctx.packageManager.resolveActivity(i, 0) != null
     }
+
+    fun browserOpen(ctx: Context, url: String) {
+        try {
+            val i = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            ctx.startActivity(Intent.createChooser(i, "Open in browser"))
+        } catch (_: Exception) {}
+    }
+
+    fun whatsAppSend(ctx: Context, phone: String, message: String) {
+        try {
+            val encoded = Uri.encode(message)
+            val i = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$phone?text=$encoded"))
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            ctx.startActivity(i)
+        } catch (_: Exception) {}
+    }
+
+    fun telegramSend(ctx: Context, botToken: String, chatId: String, message: String) {
+        try {
+            val encoded = Uri.encode(message)
+            val i = Intent(Intent.ACTION_VIEW, Uri.parse("https://api.telegram.org/bot$botToken/sendMessage?chat_id=$chatId&text=$encoded"))
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            ctx.startActivity(i)
+        } catch (_: Exception) {}
+    }
+
+    fun emailDraft(ctx: Context, to: String, subject: String, body: String, attachment: File? = null) {
+        try {
+            val i = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:$to")).apply {
+                putExtra(Intent.EXTRA_SUBJECT, subject)
+                putExtra(Intent.EXTRA_TEXT, body)
+            }
+            attachment?.let { file ->
+                val uri = FileProvider.getUriForFile(ctx, "com.mikimouse.app.fileprovider", file)
+                i.putExtra(Intent.EXTRA_STREAM, uri)
+                i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            ctx.startActivity(Intent.createChooser(i, "Send email"))
+        } catch (_: Exception) {}
+    }
+
+    fun calendarReminder(ctx: Context, title: String, description: String, minutes: Int) {
+        try {
+            val i = Intent(Intent.ACTION_INSERT, CalendarContract.Events.CONTENT_URI).apply {
+                putExtra(CalendarContract.Events.TITLE, title)
+                putExtra(CalendarContract.Events.DESCRIPTION, description)
+                putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME,
+                    System.currentTimeMillis() + minutes * 60 * 1000)
+            }
+            ctx.startActivity(i)
+        } catch (_: Exception) {}
+    }
 }
