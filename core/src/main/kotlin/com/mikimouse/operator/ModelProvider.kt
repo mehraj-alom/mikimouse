@@ -98,6 +98,31 @@ class CustomAPIProvider(
     override fun chat(req: ChatRequest): String = inner.chat(req)
 }
 
+class LocalLlamaCppProvider(
+    val modelPath: String,
+    val nCtx: Int = 4096,
+) : ModelProvider {
+    override val id = "local-llama-cpp"
+    override fun chat(req: ChatRequest): String {
+        // P1: Wire llama.cpp GGUF inference here.
+        // For now, returns a deterministic stub so the pipeline structure is validated.
+        val imagesNote = if (req.images.isNotEmpty()) " with ${req.images.size} image(s)" else ""
+        return "LOCAL-LLAMA-CPP ($modelPath, ctx=$nCtx)$imagesNote: ${req.user.take(300)}\n\n[Wire llama.cpp binary/binaries in P1 for real local inference.]"
+    }
+}
+
+class LocalOnnxProvider(
+    val modelPath: String,
+    val execProvider: String = "cpu",
+) : ModelProvider {
+    override val id = "local-onnx"
+    override fun chat(req: ChatRequest): String {
+        // P1: Wire ONNX Runtime inference here.
+        val imagesNote = if (req.images.isNotEmpty()) " with ${req.images.size} image(s)" else ""
+        return "LOCAL-ONNX ($modelPath, $execProvider)$imagesNote: ${req.user.take(300)}\n\n[Wire ONNX Runtime in P1 for real local inference.]"
+    }
+}
+
 class ModelRouter(
     var primary: ModelProvider = LocalStubProvider(),
     var fallback: ModelProvider = LocalStubProvider(),

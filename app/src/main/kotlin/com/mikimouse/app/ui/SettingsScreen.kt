@@ -14,6 +14,8 @@ import com.mikimouse.app.models.SecureKeyStore
 import com.mikimouse.app.outputs.Schedules
 import com.mikimouse.operator.ConnectorRegistry
 import com.mikimouse.operator.CpuPolicy
+import com.mikimouse.operator.LocalLlamaCppProvider
+import com.mikimouse.operator.LocalOnnxProvider
 import com.mikimouse.operator.MemoryStore
 import com.mikimouse.operator.NetworkPolicy
 import com.mikimouse.operator.SkillKind
@@ -113,7 +115,7 @@ fun SettingsScreen(operatorRoot: File) {
             GlassCard(Modifier.fillMaxWidth()) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Model provider", style = MaterialTheme.typography.titleMedium)
-                    listOf("local", "openai", "openrouter", "custom", "vlm-openai", "vlm-openrouter", "vlm-custom").forEach { p ->
+                    listOf("local", "openai", "openrouter", "custom", "vlm-openai", "vlm-openrouter", "vlm-custom", "local-llama-cpp", "local-onnx").forEach { p ->
                         Row {
                             RadioButton(selected = provider == p, onClick = { provider = p; store.providerId = p })
                             TextButton(onClick = { provider = p; store.providerId = p }) {
@@ -124,6 +126,8 @@ fun SettingsScreen(operatorRoot: File) {
                                     "vlm-openai" -> "OpenAI GPT-4V (vision)"
                                     "vlm-openrouter" -> "OpenRouter VLM (vision)"
                                     "vlm-custom" -> "Custom VLM (vision)"
+                                    "local-llama-cpp" -> "Local llama.cpp (GGUF)"
+                                    "local-onnx" -> "Local ONNX Runtime"
                                     "custom" -> "Custom API"
                                     else -> p
                                 })
@@ -154,6 +158,8 @@ fun SettingsScreen(operatorRoot: File) {
                     }
                     val has = KeystoreKeysFile.loadFrom(keysDir, keyAlias(), ks) != null
                     Text(if (has) "Key stored ✓" else "No key stored", style = MaterialTheme.typography.bodySmall)
+                    OutlinedTextField(store.llamaModelPath, { store.llamaModelPath = it }, label = { Text("llama.cpp model path (GGUF file)") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(store.onnxModelPath, { store.onnxModelPath = it }, label = { Text("ONNX model path") }, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(store.telegramBotToken, { store.telegramBotToken = it }, label = { Text("Telegram Bot Token (optional)") }, modifier = Modifier.fillMaxWidth())
                 }
             }

@@ -6,6 +6,8 @@ import com.mikimouse.operator.CpuPolicy
 import com.mikimouse.operator.CustomAPIProvider
 import com.mikimouse.operator.EnvKeyProvider
 import com.mikimouse.operator.KeyProvider
+import com.mikimouse.operator.LocalLlamaCppProvider
+import com.mikimouse.operator.LocalOnnxProvider
 import com.mikimouse.operator.LocalStubProvider
 import com.mikimouse.operator.ModelProvider
 import com.mikimouse.operator.ModelRouter
@@ -40,6 +42,12 @@ class SettingsStore(private val ctx: Context) {
     var model: String
         get() = prefs.getString("model", "") ?: ""
         set(v) { prefs.edit().putString("model", v).apply() }
+    var llamaModelPath: String
+        get() = prefs.getString("llama_model_path", "") ?: ""
+        set(v) { prefs.edit().putString("llama_model_path", v).apply() }
+    var onnxModelPath: String
+        get() = prefs.getString("onnx_model_path", "") ?: ""
+        set(v) { prefs.edit().putString("onnx_model_path", v).apply() }
     var memoryEnabled: Boolean
         get() = prefs.getBoolean("memory_enabled", true)
         set(v) { prefs.edit().putBoolean("memory_enabled", v).apply() }
@@ -60,6 +68,14 @@ class SettingsStore(private val ctx: Context) {
 
     fun modelStatus(keystore: SecureKeyStore): String = when (providerId) {
         "local" -> "local stub (offline)"
+        "local-llama-cpp" -> {
+            val path = llamaModelPath.ifBlank { "no model path set" }
+            "local-llama-cpp · $path · stub (wire llama.cpp in P1)"
+        }
+        "local-onnx" -> {
+            val path = onnxModelPath.ifBlank { "no model path set" }
+            "local-onnx · $path · stub (wire ONNX in P1)"
+        }
         "vlm-openai" -> {
             val has = KeystoreKeysFile.loadFrom(keysDir, keyAliasFor(), keystore) != null
             "vlm-openai · ${model.ifBlank { "gpt-4o" }} · ${if (has) "key ✓" else "no key — local stub until saved"}"
@@ -93,6 +109,12 @@ class SettingsStore(private val ctx: Context) {
             "vlm-custom" -> CustomAPIProvider(
                 endpoint.ifBlank { throw IllegalStateException("custom endpoint empty") },
                 model.ifBlank { "default vlm" }, keys,
+            )
+            "local-llama-cpp" -> LocalLlamaCppProvider(
+                llamaModelPath.ifBlank { throw IllegalStateException("llama model path empty") }
+            )
+            "local-onnx" -> LocalOnnxProvider(
+                onnxModelPath.ifBlank { throw IllegalStateException("onnx model path empty") }
             )
             else -> LocalStubProvider()
         }
