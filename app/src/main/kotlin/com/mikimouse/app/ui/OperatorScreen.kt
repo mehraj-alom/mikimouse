@@ -723,6 +723,39 @@ fun OperatorScreen(operatorRoot: File, initialInstruction: String = "Create a pr
                             Button(enabled = !running && picked.isNotEmpty(), onClick = ::startFresh) {
                                 Text(if (running) "Working…" else "Run")
                             }
+                            Button(enabled = !running && picked.isNotEmpty(), onClick = {
+                                running = true
+                                scope.launch(Dispatchers.IO) {
+                                    try {
+                                        // Copy picked URIs into workspace first
+                                        val wm = com.mikimouse.operator.WorkspaceManager(operatorRoot)
+                                        val ws = wm.create("auto-${System.currentTimeMillis()}")
+                                        val repo = com.mikimouse.app.data.TaskRepository(ctx, wm)
+                                        val importedFiles = repo.importUris(ws, picked)
+                                        
+                                        val autoOp = com.mikimouse.app.operator.AutonomousOperator(
+                                            ctx, operatorRoot, settings
+                                        )
+                                        val result = autoOp.executeAutonomous(
+                                            instruction,
+                                            importedFiles
+                                        )
+                                        withContext(Dispatchers.Main) {
+                                            log = listOf(
+                                                "Autonomous: ${result.completedSteps}/${result.totalSteps} steps completed",
+                                                "Outputs: ${result.outputs.joinToString(", ")}",
+                                                "Errors: ${result.errors.joinToString(", ")}"
+                                            )
+                                            running = false
+                                        }
+                                    } catch (t: Throwable) {
+                                        withContext(Dispatchers.Main) {
+                                            running = false
+                                            log = listOf("Autonomous failed: ${t.message ?: "unknown"}")
+                                        }
+                                    }
+                                }
+                            }) { Text("Auto") }
                             TextButton(enabled = picked.isNotEmpty(), onClick = {
                                 queue = queue + (instruction to picked)
                             }) { Text("Queue (${queue.size})") }
