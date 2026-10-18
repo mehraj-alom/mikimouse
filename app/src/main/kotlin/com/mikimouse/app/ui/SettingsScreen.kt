@@ -337,6 +337,11 @@ fun SettingsScreen(operatorRoot: File) {
                             }
                         }
                     }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(onClick = { OperatorIntents.openInApp(ctx, "https://wa.me/") }) { Text("WhatsApp Web") }
+                        TextButton(onClick = { OperatorIntents.openInApp(ctx, "https://web.telegram.org/") }) { Text("Telegram Web") }
+                        TextButton(onClick = { OperatorIntents.openInApp(ctx, "https://gmail.com/") }) { Text("Gmail Web") }
+                    }
                     Text("No AccessibilityService. Banking apps untouched.", style = MaterialTheme.typography.bodySmall)
                     if (msg.isNotBlank()) Text(msg, style = MaterialTheme.typography.bodySmall)
                 }
