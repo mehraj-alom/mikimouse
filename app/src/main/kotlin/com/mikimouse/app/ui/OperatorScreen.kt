@@ -23,6 +23,7 @@ import com.mikimouse.app.data.TaskRepository
 import com.mikimouse.app.intents.DeviceActions
 import com.mikimouse.app.intents.OperatorIntents
 import com.mikimouse.app.media.AndroidMediaRenderer
+import com.mikimouse.app.media.AndroidPptxRenderer
 import com.mikimouse.app.media.AndroidPdfRenderer
 import com.mikimouse.app.media.FrameGrabber
 import com.mikimouse.app.media.ImageTools
@@ -390,10 +391,13 @@ fun OperatorScreen(operatorRoot: File, initialInstruction: String = "Create a pr
                 if (!pptx.exists()) {
                     val texts = (ocrTexts.values.filter { it.isNotBlank() }.ifEmpty { imported.map { it.name } }) + spec.instruction
                     val slides = DocumentPipeline.outlineFromTexts("Operator Report", texts)
+                    // Real PPTX on Android (no java.awt needed)
+                    val pptxSlides = slides.map { AndroidPptxRenderer.Slide(it.title, it.bullets) }
+                    AndroidPptxRenderer.render(pptxSlides, pptx)
                     AndroidPdfRenderer.renderSlides(
                         "Operator Report", slides, File(ws.output, "presentation.pdf"), images,
                     )
-                    lines += "PPTX unavailable on-device (no java.awt); rendered real PDF + Markdown instead."
+                    lines += "Rendered presentation.pptx (${pptx.length()} bytes) + presentation.pdf"
                 } else {
                     lines += "Rendered presentation.pptx (${pptx.length()} bytes)."
                 }
