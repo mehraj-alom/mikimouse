@@ -11,6 +11,8 @@ import com.mikimouse.app.data.KeystoreKeysFile
 import com.mikimouse.app.data.SettingsStore
 import com.mikimouse.app.intents.OperatorIntents
 import com.mikimouse.app.models.SecureKeyStore
+import com.mikimouse.app.outputs.BackupManager
+import com.mikimouse.app.outputs.Notifications
 import com.mikimouse.app.outputs.Schedules
 import com.mikimouse.operator.ConnectorRegistry
 import com.mikimouse.operator.CpuPolicy
@@ -24,6 +26,7 @@ import com.mikimouse.operator.SkillRecord
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun SettingsScreen(operatorRoot: File) {
@@ -296,6 +299,24 @@ fun SettingsScreen(operatorRoot: File) {
                     Text("MikiMouse Operator 0.9.0-mvp (8 early-access builds)", style = MaterialTheme.typography.bodySmall)
                     Text("200-phase plan: 100+ done. Full log in docs/MASTER-PLAN-200.md.", style = MaterialTheme.typography.bodySmall)
                     Text("Backup: workspace caches never backed up; outputs + memory survive.", style = MaterialTheme.typography.bodySmall)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = {
+                            scope.launch(Dispatchers.IO) {
+                                try {
+                                    val backupFile = BackupManager.backup(ctx, operatorRoot)
+                                    withContext(Dispatchers.Main) {
+                                        msg = "Backup created: ${backupFile.name}"
+                                        BackupManager.shareBackup(ctx, backupFile)
+                                    }
+                                } catch (t: Throwable) {
+                                    withContext(Dispatchers.Main) { msg = "Backup failed: ${t.message?.take(140)}" }
+                                }
+                            }
+                        }) { Text("Backup") }
+                        Button(onClick = {
+                            msg = "Restore: use file picker to select backup zip"
+                        }) { Text("Restore") }
+                    }
                 }
             }
         }
