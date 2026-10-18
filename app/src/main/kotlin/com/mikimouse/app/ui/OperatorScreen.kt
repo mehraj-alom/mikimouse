@@ -27,6 +27,7 @@ import com.mikimouse.app.media.AndroidPdfRenderer
 import com.mikimouse.app.media.FrameGrabber
 import com.mikimouse.app.media.ImageTools
 import com.mikimouse.app.media.OcrReader
+import com.mikimouse.app.media.RealVideoEncoder
 import com.mikimouse.app.media.SlideshowEncoder
 import com.mikimouse.app.media.VideoTrim
 import com.mikimouse.app.models.SecureKeyStore
@@ -353,10 +354,17 @@ fun OperatorScreen(operatorRoot: File, initialInstruction: String = "Create a pr
                     if (srtInputs.isNotEmpty()) {
                         lines += "Subtitles: ${cues.size} cue(s) from ${srtInputs.map { it.name }} (burned per time slice)"
                     }
-                    val enc = SlideshowEncoder.encode(images, mp4, width = w, height = h, totalSeconds = secs, bitrate = br, cues = cues)
+                    val secondsPerImage = (secs / images.size.coerceAtLeast(1)).coerceAtLeast(1)
+                    val enc = RealVideoEncoder.encodeSlideshow(
+                        images, mp4,
+                        width = w, height = h,
+                        fps = 30,
+                        secondsPerImage = secondsPerImage,
+                        bitrate = br
+                    )
                     val probe = AndroidMediaRenderer.probe(mp4)
                     lines += "Rendered final_video.mp4: ${mp4.length()} bytes, " +
-                        "${enc.frames} frames, probe=${probe?.mime ?: "unreadable"}"
+                        "${enc.frameCount} frames, ${enc.durationMs}ms, probe=${probe?.mime ?: "unreadable"}"
                     if ("music" in spec.instruction.lowercase() || "audio" in spec.instruction.lowercase()) {
                         val audios = imported.filter {
                             it.extension.lowercase() in setOf("mp3", "m4a", "wav", "ogg", "aac", "flac")
